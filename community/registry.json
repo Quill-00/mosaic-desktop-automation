@@ -6,9 +6,9 @@
     {
       "id": "hello-mosaic",
       "name": "Hello Mosaic",
-      "version": "1.0.0",
-      "summary": "验证社区安装和结构化输出的最小本地示例。",
-      "description": "只输出一条本地 JSON；不读取文件、不写入文件、不访问网络。",
+      "version": "1.0.1",
+      "summary": "A minimal local example for validating community installation and structured output.",
+      "description": "Outputs one local JSON object without reading files, writing files, or using the network.",
       "author": "Mosaic contributors",
       "license": "MIT",
       "repository": "https://github.com/Quill-00/mosaic-desktop-automation/tree/main/community/examples/hello-mosaic",
@@ -25,15 +25,15 @@
         "allowHosts": [],
         "channels": []
       },
-      "packageUrl": "packages/hello-mosaic-1.0.0.zip",
-      "sha256": "f4b8c505c1524075b3edc269f2ea4d95d95714114894a424c3c70e80de450b97"
+      "packageUrl": "packages/hello-mosaic-1.0.1.zip",
+      "sha256": "02ea3cc55c496b16bf540c5f7c80de21fdf268bb9eb64b250749e4f226dc4419"
     },
     {
       "id": "weather-open-meteo",
-      "name": "天气 · Open-Meteo",
-      "version": "1.0.0",
-      "summary": "从无需密钥的 Open-Meteo 获取天气并渲染为指标卡。",
-      "description": "默认展示北京当前温度、湿度和风速，可直接修改脚本中的经纬度。",
+      "name": "Weather · Open-Meteo",
+      "version": "1.0.1",
+      "summary": "Fetches weather from keyless Open-Meteo and renders a metric card.",
+      "description": "Shows current New York temperature, humidity, and wind by default. Edit the script coordinates for another location.",
       "author": "Mosaic contributors",
       "license": "MIT",
       "repository": "https://github.com/Quill-00/mosaic-desktop-automation/tree/main/community/examples/weather-open-meteo",
@@ -50,8 +50,8 @@
         "allowHosts": ["api.open-meteo.com"],
         "channels": []
       },
-      "packageUrl": "packages/weather-open-meteo-1.0.0.zip",
-      "sha256": "20327a5fab0ed9dff4b76bd26dcac33f02020d9e12373f9a17c64500db6a2194"
+      "packageUrl": "packages/weather-open-meteo-1.0.1.zip",
+      "sha256": "7a845f1bcde349737c44d1f7b8f1a4ee95ad1e08ae930b8944ad25ee79135d5f"
     }
   ]
 }

@@ -1,22 +1,17 @@
-# Security Policy
+# Security policy
 
-## Supported versions
+Security fixes are prioritized for the latest GitHub Release. Older versions might not receive separate backports, so reproduce issues on the latest release when practical.
 
-安全修复优先发布到最新 GitHub Release。旧版本可能不会单独回补；请先确认问题能在最新版本复现。
+## Report a vulnerability
 
-## Private reporting
+Use **Report a vulnerability** in the repository's Security section. Do not create a public issue or upload real credentials, user databases, private paths, or personal logs.
 
-请使用仓库 Security 页面中的“Report a vulnerability”私密报告。不要创建公开 Issue，也不要上传真实凭据、用户数据库或含个人信息的日志。
+Include the affected Mosaic and Windows versions, minimal reproduction steps, expected impact, and redacted error details. Describe any attachment and its sensitivity before sharing it.
 
-报告建议包含：
+Maintainers will acknowledge the report, assess impact, and coordinate remediation and disclosure.
 
-- 受影响版本和 Windows 版本；
-- 最小复现步骤与预期影响；
-- 已脱敏的错误信息；
-- 如需附件，先说明内容和敏感性。
+## In scope
 
-维护者会确认报告、评估影响并协调修复与披露时间。
+Examples include update signature or hash bypasses, community ZIP path escapes, plaintext credential exposure, cross-task permission bugs, and unsafe process lifecycle behavior.
 
-## Scope
-
-欢迎报告更新签名/校验绕过、社区 ZIP 路径逃逸、凭据明文泄露、跨任务权限问题和不安全进程生命周期。第三方脚本本身的恶意行为不属于 Mosaic 沙箱漏洞，因为当前版本明确不承诺系统级隔离；但绕过安装阶段校验或误导用户风险判断仍属于范围。
+Malicious behavior inside a third-party script is not a Mosaic sandbox vulnerability because the current release does not claim operating-system isolation. Bypassing installation checks or misleading users about declared risk remains in scope.

@@ -8,8 +8,8 @@ $packages = Join-Path $community 'packages'
 New-Item -ItemType Directory -Force -Path $packages | Out-Null
 
 $entries = @(
-    @{ Id = 'hello-mosaic'; Version = '1.0.0' },
-    @{ Id = 'weather-open-meteo'; Version = '1.0.0' }
+    @{ Id = 'hello-mosaic'; Version = '1.0.1' },
+    @{ Id = 'weather-open-meteo'; Version = '1.0.1' }
 )
 
 foreach ($entry in $entries) {

@@ -67,6 +67,7 @@ AGENTS.md
 *.doc
 *.docx
 !README.md
+!README.zh-CN.md
 !CONTRIBUTING.md
 !CODE_OF_CONDUCT.md
 !SECURITY.md

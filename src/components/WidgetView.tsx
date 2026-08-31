@@ -4,14 +4,17 @@ import { getCurrentWindow, LogicalPosition } from "@tauri-apps/api/window";
 import { Boxes, ChevronRight, ExternalLink, Play, Power, Puzzle } from "lucide-react";
 import { api, useSnapshot } from "../api";
 import type { Task } from "../types";
+import { useI18n } from "../i18n";
+import type { Locale } from "../i18n";
 
-function scriptStatus(task: Task, running: boolean, headline?: string): string {
-  if (running) return "正在运行";
+function scriptStatus(task: Task, running: boolean, locale: Locale, headline?: string): string {
+  if (running) return locale === "zh-CN" ? "正在运行" : "Running";
   if (headline) return headline;
-  return task.enabled ? "等待运行" : "已停用";
+  return task.enabled ? locale === "zh-CN" ? "等待运行" : "Waiting" : locale === "zh-CN" ? "已停用" : "Disabled";
 }
 
 export default function WidgetView() {
+  const { locale, t } = useI18n();
   const { snap, error, refresh } = useSnapshot();
   const [expanded, setExpanded] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
@@ -187,7 +190,7 @@ export default function WidgetView() {
         onMouseEnter={expand}
         onFocus={expand}
         onClick={expand}
-        aria-label="展开 Mosaic 快捷挂件"
+        aria-label={t("Expand Mosaic quick widget", "展开 Mosaic 快捷挂件")}
       >
         <span className="widget-handle-line" />
       </button>
@@ -199,7 +202,7 @@ export default function WidgetView() {
       className="widget-panel"
       onMouseEnter={expand}
       onMouseLeave={scheduleCollapse}
-      aria-label="Mosaic 快捷挂件"
+      aria-label={t("Mosaic quick widget", "Mosaic 快捷挂件")}
     >
       <header
         className="widget-header"
@@ -207,30 +210,30 @@ export default function WidgetView() {
         onPointerMove={moveDragging}
         onPointerUp={(event) => void finishDragging(event)}
         onPointerCancel={(event) => void finishDragging(event)}
-        title="拖动后自动吸附到最近的屏幕边缘"
+        title={t("Drag to snap to the nearest screen edge", "拖动后自动吸附到最近的屏幕边缘")}
       >
         <div className="widget-title">
-          <strong>脚本与插件</strong>
+          <strong>{t("Scripts & plugins", "脚本与插件")}</strong>
           <span>
             <i className={error ? "status-dot offline" : "status-dot online"} />
-            {error ? "引擎连接中断" : `${runningIds.size} 项正在运行`}
+            {error ? t("Engine disconnected", "引擎连接中断") : t(`${runningIds.size} running`, `${runningIds.size} 项正在运行`)}
           </span>
         </div>
         <div className="widget-actions">
-          <button onClick={collapse} aria-label="收起挂件"><ChevronRight /></button>
+          <button onClick={collapse} aria-label={t("Collapse widget", "收起挂件")}><ChevronRight /></button>
         </div>
       </header>
 
       <div className="widget-scroll">
-        {!snap && !error && <div className="widget-blank">正在连接 Mosaic…</div>}
+        {!snap && !error && <div className="widget-blank">{t("Connecting to Mosaic…", "正在连接 Mosaic…")}</div>}
         {error && (
           <div className="widget-blank">
-            <span>暂时无法刷新运行状态</span>
-            <button onClick={() => void refresh()}>重试</button>
+            <span>{t("Unable to refresh status", "暂时无法刷新运行状态")}</span>
+            <button onClick={() => void refresh()}>{t("Retry", "重试")}</button>
           </div>
         )}
 
-        {plugins.length > 0 && <div className="widget-section"><p>插件</p></div>}
+        {plugins.length > 0 && <div className="widget-section"><p>{t("Plugins", "插件")}</p></div>}
         {plugins.map((plugin) => {
           const running = runningIds.has(plugin.id);
           return (
@@ -240,15 +243,15 @@ export default function WidgetView() {
                 <strong title={plugin.nickname}>{plugin.nickname}</strong>
                 <span>
                   <i className={running ? "status-dot online" : "status-dot unknown"} />
-                  {running ? "运行中" : plugin.enabled ? "正在启动" : "已关闭"}
+                  {running ? t("Running", "运行中") : plugin.enabled ? t("Starting", "正在启动") : t("Off", "已关闭")}
                 </span>
               </div>
               <button
                 className={running ? "widget-button on" : "widget-button"}
                 onClick={() => void togglePlugin(plugin)}
                 disabled={switching === plugin.id}
-                aria-label={`${plugin.enabled ? "关闭并终止" : "静默启动"}${plugin.nickname}`}
-                title={plugin.enabled ? "关闭并终止整个进程树" : "静默启动"}
+                aria-label={plugin.enabled ? t(`Stop ${plugin.nickname} and its process tree`, `关闭并终止${plugin.nickname}`) : t(`Start ${plugin.nickname} silently`, `静默启动${plugin.nickname}`)}
+                title={plugin.enabled ? t("Stop the entire process tree", "关闭并终止整个进程树") : t("Start silently", "静默启动")}
               >
                 <Power />
               </button>
@@ -256,7 +259,7 @@ export default function WidgetView() {
           );
         })}
 
-        {scripts.length > 0 && <div className="widget-section"><p>仪表盘脚本</p></div>}
+        {scripts.length > 0 && <div className="widget-section"><p>{t("Dashboard scripts", "仪表盘脚本")}</p></div>}
         {scripts.map((script) => {
           const running = runningIds.has(script.id);
           const headline = snap?.results[script.id]?.summary?.headline;
@@ -267,14 +270,14 @@ export default function WidgetView() {
                 <strong title={script.nickname}>{script.nickname}</strong>
                 <span>
                   <i className={running ? "status-dot online" : "status-dot unknown"} />
-                  {scriptStatus(script, running, headline)}
+                  {scriptStatus(script, running, locale, headline)}
                 </span>
               </div>
               <button
                 className={running ? "widget-button on" : "widget-button"}
                 onClick={() => void runScript(script)}
                 disabled={running || switching === script.id}
-                aria-label={`运行${script.nickname}`}
+                aria-label={t(`Run ${script.nickname}`, `运行${script.nickname}`)}
               >
                 <Play />
               </button>
@@ -285,15 +288,15 @@ export default function WidgetView() {
         {snap && plugins.length === 0 && scripts.length === 0 && (
           <div className="widget-blank">
             <Boxes />
-            <span>库里还没有可快捷控制的内容</span>
-            <button onClick={openMain}>打开脚本与插件库</button>
+            <span>{t("Nothing is available for quick control yet", "库里还没有可快捷控制的内容")}</span>
+            <button onClick={openMain}>{t("Open the script and plugin library", "打开脚本与插件库")}</button>
           </div>
         )}
       </div>
 
       <footer className="widget-footer">
-        <span>{plugins.length} 个插件 · {scripts.length} 个仪表盘脚本</span>
-        <button onClick={openMain}>打开主库 <ExternalLink /></button>
+        <span>{t(`${plugins.length} plugins · ${scripts.length} dashboard scripts`, `${plugins.length} 个插件 · ${scripts.length} 个仪表盘脚本`)}</span>
+        <button onClick={openMain}>{t("Open library", "打开主库")} <ExternalLink /></button>
       </footer>
     </section>
   );

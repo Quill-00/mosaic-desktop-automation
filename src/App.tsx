@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { currentMonitor, getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
 import { Activity, AlertCircle, Bell, Blocks, LayoutGrid, ListChecks, Plus, RefreshCw, Settings, ShieldAlert, X } from "lucide-react";
 import { errorMessage, useSnapshot } from "./api";
+import { useI18n } from "./i18n";
 import Dashboard from "./components/Dashboard";
 import Tasks from "./components/Tasks";
 import Running from "./components/Running";
@@ -23,6 +24,7 @@ const IS_WIDGET = (() => {
 })();
 
 export default function App() {
+  const { t } = useI18n();
   const { snap, error, refresh } = useSnapshot();
   const [view, setView] = useState<View>("dashboard");
   const [autoNew, setAutoNew] = useState(false);
@@ -103,11 +105,11 @@ export default function App() {
   useEffect(() => {
     const onRejection = (event: PromiseRejectionEvent) => {
       event.preventDefault();
-      setActionError(errorMessage(event.reason));
+      setActionError(errorMessage(event.reason, t("Operation failed. Please try again.", "操作失败，请稍后重试。")));
     };
     window.addEventListener("unhandledrejection", onRejection);
     return () => window.removeEventListener("unhandledrejection", onRejection);
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (!actionError) return;
@@ -136,20 +138,20 @@ export default function App() {
             setAutoNew(true);
           }}
         >
-          <Plus size={17} /> 添加脚本或插件
+          <Plus size={17} /> {t("Add script or plugin", "添加脚本或插件")}
         </button>
         <div className="sidebar-divider" />
         <nav>
-          <NavBtn icon={<LayoutGrid size={17} />} label="仪表盘" active={view === "dashboard"} onClick={() => setView("dashboard")} />
-          <NavBtn icon={<ListChecks size={17} />} label="脚本与插件" active={view === "tasks"} onClick={() => setView("tasks")} />
-          <NavBtn icon={<Blocks size={17} />} label="插件中心" active={view === "community"} onClick={() => setView("community")} />
-          <NavBtn icon={<Activity size={17} />} label="正在运行" badge={running || undefined} active={view === "running"} onClick={() => setView("running")} />
-          <NavBtn icon={<Bell size={17} />} label="通知" badge={unread || undefined} active={view === "notifications"} onClick={() => setView("notifications")} />
-          <NavBtn icon={<Settings size={17} />} label="设置" active={view === "settings"} onClick={() => setView("settings")} />
+          <NavBtn icon={<LayoutGrid size={17} />} label={t("Dashboard", "仪表盘")} active={view === "dashboard"} onClick={() => setView("dashboard")} />
+          <NavBtn icon={<ListChecks size={17} />} label={t("Scripts & plugins", "脚本与插件")} active={view === "tasks"} onClick={() => setView("tasks")} />
+          <NavBtn icon={<Blocks size={17} />} label={t("Community", "插件中心")} active={view === "community"} onClick={() => setView("community")} />
+          <NavBtn icon={<Activity size={17} />} label={t("Running", "正在运行")} badge={running || undefined} active={view === "running"} onClick={() => setView("running")} />
+          <NavBtn icon={<Bell size={17} />} label={t("Notifications", "通知")} badge={unread || undefined} active={view === "notifications"} onClick={() => setView("notifications")} />
+          <NavBtn icon={<Settings size={17} />} label={t("Settings", "设置")} active={view === "settings"} onClick={() => setView("settings")} />
         </nav>
         <div className="sidebar-foot">
           <ShieldAlert size={14} />
-          本地执行 · 第三方代码需信任
+          {t("Local execution · Trust third-party code", "本地执行 · 第三方代码需信任")}
         </div>
       </aside>
 
@@ -157,26 +159,26 @@ export default function App() {
         {!snap && !error && (
           <div className="loading-state" role="status">
             <RefreshCw size={18} className="spin" />
-            <span>正在连接 Mosaic 引擎…</span>
+            <span>{t("Connecting to the Mosaic engine…", "正在连接 Mosaic 引擎…")}</span>
           </div>
         )}
         {!snap && error && (
           <div className="engine-error" role="alert">
             <AlertCircle size={22} />
             <div>
-              <strong>无法连接 Mosaic 引擎</strong>
+              <strong>{t("Cannot connect to the Mosaic engine", "无法连接 Mosaic 引擎")}</strong>
               <p>{error}</p>
             </div>
             <button className="btn" onClick={() => void refresh()}>
-              <RefreshCw size={14} /> 重试
+              <RefreshCw size={14} /> {t("Retry", "重试")}
             </button>
           </div>
         )}
         {snap && error && (
           <div className="connection-banner" role="status">
             <AlertCircle size={14} />
-            <span>数据刷新暂时中断，当前显示的是最近一次结果。</span>
-            <button className="btn small" onClick={() => void refresh()}>重试</button>
+            <span>{t("Refresh is temporarily unavailable. Showing the latest cached result.", "数据刷新暂时中断，当前显示的是最近一次结果。")}</span>
+            <button className="btn small" onClick={() => void refresh()}>{t("Retry", "重试")}</button>
           </div>
         )}
         {snap && view === "dashboard" && <Dashboard snap={snap} onNavigate={(v) => setView(v as View)} />}
@@ -191,7 +193,7 @@ export default function App() {
         <div className="toast danger-toast" role="alert">
           <AlertCircle size={16} />
           <span>{actionError}</span>
-          <button className="icon-btn" onClick={() => setActionError(null)} aria-label="关闭错误提示">
+          <button className="icon-btn" onClick={() => setActionError(null)} aria-label={t("Dismiss error", "关闭错误提示")}>
             <X size={15} />
           </button>
         </div>

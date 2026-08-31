@@ -3,13 +3,14 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { FileText, Folder, X } from "lucide-react";
 import { api, errorMessage, relTime } from "../api";
 import type { DetailItem, Execution, Task, TaskResultState } from "../types";
+import { useI18n } from "../i18n";
 
-const STATUS: Record<string, { label: string; cls: string }> = {
-  ok: { label: "成功", cls: "ok" },
-  running: { label: "运行中", cls: "info" },
-  failed: { label: "失败", cls: "danger" },
-  timedOut: { label: "超时", cls: "danger" },
-  killed: { label: "已终止", cls: "danger" },
+const STATUS: Record<string, { en: string; zh: string; cls: string }> = {
+  ok: { en: "Succeeded", zh: "成功", cls: "ok" },
+  running: { en: "Running", zh: "运行中", cls: "info" },
+  failed: { en: "Failed", zh: "失败", cls: "danger" },
+  timedOut: { en: "Timed out", zh: "超时", cls: "danger" },
+  killed: { en: "Terminated", zh: "已终止", cls: "danger" },
 };
 
 export default function TaskDetail({
@@ -22,6 +23,7 @@ export default function TaskDetail({
   executions: Execution[];
   onClose: () => void;
 }) {
+  const { locale, t } = useI18n();
   const rounds = executions; // already filtered to this task, newest first
   const [selId, setSelId] = useState<string | null>(rounds[0]?.id ?? null);
   const [cache, setCache] = useState<Record<string, DetailItem[]>>({});
@@ -87,24 +89,24 @@ export default function TaskDetail({
     <div className="modal" onClick={onClose}>
       <div className="sheet wide detail" role="dialog" aria-modal="true" aria-labelledby="task-detail-title" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-head">
-          <h3 id="task-detail-title" style={{ flex: 1 }}>{task.nickname} · 产物</h3>
+          <h3 id="task-detail-title" style={{ flex: 1 }}>{task.nickname} · {t("Outputs", "产物")}</h3>
           {hasDir && (
             <button className="btn small" onClick={() => api.openPath(task.outputDir as string)}>
-              <Folder size={14} /> 打开产物目录
+              <Folder size={14} /> {t("Open output folder", "打开产物目录")}
             </button>
           )}
-          <button className="icon-btn" onClick={onClose} aria-label="关闭产物详情">
+          <button className="icon-btn" onClick={onClose} aria-label={t("Close output details", "关闭产物详情")}>
             <X size={16} />
           </button>
         </div>
 
         {rounds.length === 0 ? (
-          <div className="empty">还没有运行记录。运行一次任务后，这里会按轮次显示产物。</div>
+          <div className="empty">{t("No run history yet. Outputs will appear here after the task runs.", "还没有运行记录。运行一次任务后，这里会按轮次显示产物。")}</div>
         ) : (
           <div className="detail-layout">
             <div className="rounds">
               {rounds.map((r) => {
-                const s = STATUS[r.status] || { label: r.status, cls: "info" };
+                const s = STATUS[r.status] || { en: r.status, zh: r.status, cls: "info" };
                 return (
                   <button
                     key={r.id}
@@ -113,11 +115,11 @@ export default function TaskDetail({
                   >
                     <div className="round-top">
                       <span className={"dot " + s.cls} />
-                      <span className="round-time">{relTime(r.startedAt) || r.startedAt}</span>
+                      <span className="round-time">{relTime(r.startedAt, locale) || r.startedAt}</span>
                     </div>
                     <div className="round-sub">
-                      {s.label}
-                      {r.itemCount > 0 ? ` · ${r.itemCount} 项` : ""}
+                      {locale === "zh-CN" ? s.zh : s.en}
+                      {r.itemCount > 0 ? t(` · ${r.itemCount} items`, ` · ${r.itemCount} 项`) : ""}
                       {r.trigger ? ` · ${r.trigger}` : ""}
                     </div>
                   </button>
@@ -126,23 +128,23 @@ export default function TaskDetail({
             </div>
 
             <div className="round-content">
-              {loading && items.length === 0 && <div className="muted small">加载中…</div>}
+              {loading && items.length === 0 && <div className="muted small">{t("Loading…", "加载中…")}</div>}
               {loadError && <div className="form-error" role="alert">{loadError}</div>}
 
               {!loading && sel && items.length === 0 && (
                 <div className="empty">
                   {sel.status === "running"
-                    ? "本轮正在运行…"
+                    ? t("This run is still in progress…", "本轮正在运行…")
                     : sel.status !== "ok"
-                      ? sel.error || "本轮未成功，没有产物。"
-                      : "本轮没有可展示的产物。"}
+                      ? sel.error || t("This run did not succeed, so there are no outputs.", "本轮未成功，没有产物。")
+                      : t("This run produced no displayable outputs.", "本轮没有可展示的产物。")}
                   {hasDir && sel.status === "ok" && (
                     <button
                       className="btn small"
                       style={{ marginLeft: 8 }}
                       onClick={() => api.openPath(task.outputDir as string)}
                     >
-                      <Folder size={14} /> 打开目录
+                      <Folder size={14} /> {t("Open folder", "打开目录")}
                     </button>
                   )}
                 </div>
@@ -154,7 +156,7 @@ export default function TaskDetail({
                     <div key={i} className="tl-row">
                       <div className="tl-title">{it.title}</div>
                       {it.subtitle && <div className="li-sub">{it.subtitle}</div>}
-                      {it.at && <div className="tl-time">{relTime(it.at)}</div>}
+                      {it.at && <div className="tl-time">{relTime(it.at, locale)}</div>}
                     </div>
                   ))}
                 </div>
@@ -200,7 +202,7 @@ export default function TaskDetail({
                       key={i}
                       className="file-row"
                       onClick={() => it.path && api.openPath(it.path)}
-                      title="打开文件"
+                      title={t("Open file", "打开文件")}
                     >
                       <FileText size={15} className="muted" />
                       <span className="tl-title">{it.title}</span>
@@ -218,7 +220,7 @@ export default function TaskDetail({
         <div
           className="preview-overlay"
           role="button"
-          aria-label="关闭图片预览"
+          aria-label={t("Close image preview", "关闭图片预览")}
           tabIndex={0}
           onClick={(e) => {
             e.stopPropagation();

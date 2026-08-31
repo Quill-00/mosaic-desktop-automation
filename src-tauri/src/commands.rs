@@ -45,6 +45,11 @@ fn emit(app: &AppHandle) {
     let _ = app.emit("mosaic:changed", ());
 }
 
+#[tauri::command]
+pub fn set_locale(locale: String) -> Result<(), String> {
+    crate::locale::set(&locale)
+}
+
 fn clear_last_run(state: &Shared, id: &str) {
     lk(&state.last_runs).remove(id);
 }

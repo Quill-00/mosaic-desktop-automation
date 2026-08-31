@@ -565,4 +565,8 @@ pub struct Db {
     /// without replacing any sources the user already configured.
     #[serde(default)]
     pub migrated_v6: bool,
+    /// Seventh migration: remove superseded showcase tasks. Distribution keeps
+    /// only the weather example and the disabled CLIProxyAPI plugin entry.
+    #[serde(default)]
+    pub migrated_v7: bool,
 }

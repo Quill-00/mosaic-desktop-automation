@@ -1,3 +1,5 @@
+import { useI18n } from "../i18n";
+
 type CardData = Record<string, unknown>;
 
 function records(value: unknown): CardData[] {
@@ -11,6 +13,7 @@ function text(value: unknown): string {
 }
 
 export default function CardView({ card }: { card: unknown }) {
+  const { t } = useI18n();
   if (!card || typeof card !== "object") return null;
   const data = card as CardData;
 
@@ -32,7 +35,7 @@ export default function CardView({ card }: { card: unknown }) {
         <ul className="list">
           {records(data.items).map((it, i) => (
             <li key={i}>
-              <div className="li-title">{text(it.title) || "未命名条目"}</div>
+              <div className="li-title">{text(it.title) || t("Untitled item", "未命名条目")}</div>
               {!!(text(it.source) || text(it.time)) && (
                 <div className="li-sub">
                   {text(it.source)}
@@ -73,7 +76,7 @@ export default function CardView({ card }: { card: unknown }) {
         <ul className="list">
           {records(data.items).map((it, i) => (
             <li key={i}>
-              <div className="li-title">{text(it.text) || text(it.title) || "未命名条目"}</div>
+              <div className="li-title">{text(it.text) || text(it.title) || t("Untitled item", "未命名条目")}</div>
               {!!text(it.subtitle) && <div className="li-sub">{text(it.subtitle)}</div>}
             </li>
           ))}

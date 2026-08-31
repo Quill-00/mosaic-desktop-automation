@@ -4,50 +4,27 @@ use chrono::Local;
 // Real, runnable example tasks (live data, no extra deps — Node's global fetch).
 // Installed once via migrations; not fabricated mock output.
 
-const HN_SCRIPT: &str = r#"(async()=>{const ids=(await (await fetch('https://hacker-news.firebaseio.com/v0/topstories.json')).json()).slice(0,8);const items=[];for(const id of ids){const s=await (await fetch('https://hacker-news.firebaseio.com/v0/item/'+id+'.json')).json();if(s&&s.title)items.push({title:s.title,source:'Hacker News'});}console.log(JSON.stringify({summary:{headline:items.length+' 条热门',count:items.length},card:{type:'news',title:'Hacker News',items},items:items.map(i=>({title:i.title,subtitle:'HN',at:new Date().toISOString()}))}));})().catch(e=>{console.error(e);process.exit(1);});"#;
-
-const CRYPTO_SCRIPT: &str = r#"(async()=>{const d=await (await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,solana&vs_currencies=usd')).json();const m=[{label:'BTC',value:'$'+(d.bitcoin?.usd??'-')},{label:'ETH',value:'$'+(d.ethereum?.usd??'-')},{label:'SOL',value:'$'+(d.solana?.usd??'-')}];console.log(JSON.stringify({summary:{headline:'实时行情',count:m.length},card:{type:'metric',title:'加密行情',metrics:m},items:[{title:'行情更新',at:new Date().toISOString()}]}));})().catch(e=>{console.error(e);process.exit(1);});"#;
-
 const WEATHER_SCRIPT: &str = r#"(async()=>{const r=await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=39.9&longitude=116.4&current=temperature_2m,wind_speed_10m,relative_humidity_2m')).json();const c=r.current||{};const m=[{label:'温度',value:(c.temperature_2m??'-')+'°C'},{label:'湿度',value:(c.relative_humidity_2m??'-')+'%'},{label:'风速',value:(c.wind_speed_10m??'-')+' km/h'}];console.log(JSON.stringify({summary:{headline:'北京天气'},card:{type:'metric',title:'天气 · 北京',metrics:m},items:[{title:'天气更新',at:new Date().toISOString()}]}));})().catch(e=>{console.error(e);process.exit(1);});"#;
 
-const QUOTE_SCRIPT: &str = r#"(async()=>{const d=await (await fetch('https://v1.hitokoto.cn/')).json();const t=d.hitokoto+(d.from?(' —— '+d.from):'');console.log(JSON.stringify({summary:{headline:'每日一言'},card:{type:'markdown',title:'每日一言',text:t},items:[{title:d.hitokoto,subtitle:d.from||'',at:new Date().toISOString()}]}));})().catch(e=>{console.error(e);process.exit(1);});"#;
+const WEATHER_SCRIPT_EN: &str = r#"(async()=>{const r=await (await fetch('https://api.open-meteo.com/v1/forecast?latitude=40.7128&longitude=-74.0060&current=temperature_2m,wind_speed_10m,relative_humidity_2m')).json();const c=r.current||{};const m=[{label:'Temperature',value:(c.temperature_2m??'-')+'°C'},{label:'Humidity',value:(c.relative_humidity_2m??'-')+'%'},{label:'Wind',value:(c.wind_speed_10m??'-')+' km/h'}];console.log(JSON.stringify({summary:{headline:'New York weather'},card:{type:'metric',title:'Weather · New York',metrics:m},items:[{title:'Weather updated',at:new Date().toISOString()}]}));})().catch(e=>{console.error(e);process.exit(1);});"#;
+
+fn use_chinese_defaults() -> bool {
+    Local::now().offset().local_minus_utc() == 8 * 60 * 60
+}
 
 pub fn example_tasks_v1() -> Vec<Task> {
-    vec![
-        node_task(
-            "example-hn",
-            "Hacker News 热门",
-            HN_SCRIPT,
-            Trigger::Interval { every_secs: 1800 },
-            DisplayForm::Card,
-        ),
-        node_task(
-            "example-crypto",
-            "加密行情",
-            CRYPTO_SCRIPT,
-            Trigger::Interval { every_secs: 600 },
-            DisplayForm::Metric,
-        ),
-    ]
+    Vec::new()
 }
 
 pub fn example_tasks_v2() -> Vec<Task> {
-    vec![
-        node_task(
+    let chinese = use_chinese_defaults();
+    vec![node_task(
             "example-weather",
-            "北京天气",
-            WEATHER_SCRIPT,
+            if chinese { "北京天气" } else { "New York Weather" },
+            if chinese { WEATHER_SCRIPT } else { WEATHER_SCRIPT_EN },
             Trigger::Interval { every_secs: 3600 },
             DisplayForm::Metric,
-        ),
-        node_task(
-            "example-quote",
-            "每日一言",
-            QUOTE_SCRIPT,
-            Trigger::Interval { every_secs: 7200 },
-            DisplayForm::Card,
-        ),
-    ]
+        )]
 }
 
 fn location(path: std::path::PathBuf) -> Option<(String, Option<String>)> {

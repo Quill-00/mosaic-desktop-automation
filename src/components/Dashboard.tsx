@@ -6,10 +6,12 @@ import type { Snapshot, Task } from "../types";
 import CardView from "./Cards";
 import StatusBar from "./StatusBar";
 import TaskDetail from "./TaskDetail";
+import { useI18n } from "../i18n";
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavigate?: (v: string) => void }) {
+  const { locale, t: tr } = useI18n();
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const [editing, setEditing] = useState(false);
   const [localIds, setLocalIds] = useState<string[] | null>(null);
@@ -90,16 +92,16 @@ export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavi
         <section className="dash-notif">
           <div className="dash-notif-head">
             <Bell size={14} />
-            <span>通知</span>
-            {unread > 0 && <span className="pill">{unread} 未读</span>}
+            <span>{tr("Notifications", "通知")}</span>
+            {unread > 0 && <span className="pill">{tr(`${unread} unread`, `${unread} 未读`)}</span>}
             <span style={{ flex: 1 }} />
             {unread > 0 && (
               <button className="btn small" onClick={() => api.markAllRead()}>
-                全部已读
+                {tr("Mark all read", "全部已读")}
               </button>
             )}
             <button className="btn small" onClick={() => onNavigate?.("notifications")}>
-              查看全部
+              {tr("View all", "查看全部")}
             </button>
           </div>
           {snap.notifications.slice(0, 4).map((n) => (
@@ -110,24 +112,24 @@ export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavi
                 <Bell size={14} className="muted" />
               )}
               <span className="dn-title">{n.title}</span>
-              <span className="muted small">{relTime(n.at)}</span>
+              <span className="muted small">{relTime(n.at, locale)}</span>
             </div>
           ))}
         </section>
       )}
 
       <div className="view-head">
-        <h2 className="view-title">仪表盘</h2>
-        <span className="muted">{editing ? "拖动卡片排序，拖右/下边框改大小" : ""}</span>
+        <h2 className="view-title">{tr("Dashboard", "仪表盘")}</h2>
+        <span className="muted">{editing ? tr("Drag cards to reorder. Drag the right or bottom edge to resize.", "拖动卡片排序，拖右/下边框改大小") : ""}</span>
         {snap.tasks.length > 0 && (
           <button className="btn" onClick={() => (editing ? stopEdit() : startEdit())}>
             {editing ? (
               <>
-                <Check size={14} /> 完成
+                <Check size={14} /> {tr("Done", "完成")}
               </>
             ) : (
               <>
-                <Pencil size={14} /> 编辑布局
+                <Pencil size={14} /> {tr("Edit layout", "编辑布局")}
               </>
             )}
           </button>
@@ -151,16 +153,16 @@ export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavi
             >
               <div className="module-head">
                 {editing && (
-                  <span className="drag-grip" draggable onDragStart={() => setDragId(t.id)} aria-label="拖动排序">
+                  <span className="drag-grip" draggable onDragStart={() => setDragId(t.id)} aria-label={tr("Drag to reorder", "拖动排序")}>
                     <GripVertical size={14} />
                   </span>
                 )}
                 <span className="module-name">{t.nickname}</span>
-                {disabled && <span className="tag">已停用</span>}
+                {disabled && <span className="tag">{tr("Disabled", "已停用")}</span>}
                 {r?.summary?.count != null && <span className="pill">{r.summary.count}</span>}
                 <span style={{ flex: 1 }} />
                 {editing ? (
-                  <button className="icon-btn" onClick={() => removeFromBoard(t.id)} aria-label="移除">
+                  <button className="icon-btn" onClick={() => removeFromBoard(t.id)} aria-label={tr("Remove", "移除")}>
                     <X size={14} />
                   </button>
                 ) : (
@@ -171,10 +173,10 @@ export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavi
                 {r?.card ? (
                   <CardView card={r.card} />
                 ) : (
-                  <div className="muted small">尚无数据{t.trigger.kind === "manual" ? "" : "，等待运行…"}</div>
+                  <div className="muted small">{tr("No data yet", "尚无数据")}{t.trigger.kind === "manual" ? "" : tr(" · waiting to run…", "，等待运行…")}</div>
                 )}
               </div>
-              {r?.updatedAt && <div className="module-foot">{relTime(r.updatedAt)}更新</div>}
+              {r?.updatedAt && <div className="module-foot">{tr(`Updated ${relTime(r.updatedAt, locale)}`, `${relTime(r.updatedAt, locale)}更新`)}</div>}
               {editing && (
                 <>
                   <div className="resize-x" onPointerDown={(e) => startResize(e, t, "x")} />
@@ -188,9 +190,9 @@ export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavi
 
       {editing && (
         <div className="add-modules">
-          <div className="muted small">添加模块</div>
+          <div className="muted small">{tr("Add modules", "添加模块")}</div>
           {offBoard.length === 0 ? (
-            <div className="muted small">所有任务都已在仪表盘上。</div>
+            <div className="muted small">{tr("All tasks are already on the dashboard.", "所有任务都已在仪表盘上。")}</div>
           ) : (
             <div className="chips">
               {offBoard.map((t) => (
@@ -205,14 +207,14 @@ export default function Dashboard({ snap, onNavigate }: { snap: Snapshot; onNavi
 
       {displayed.length === 0 && !editing && (
         <div className="empty">
-          仪表盘还是空的。
+          {tr("Your dashboard is empty.", "仪表盘还是空的。")}
           {snap.tasks.length === 0 ? (
             <button className="btn" style={{ marginLeft: 8 }} onClick={() => onNavigate?.("tasks")}>
-              新建任务
+              {tr("Create task", "新建任务")}
             </button>
           ) : (
             <button className="btn" style={{ marginLeft: 8 }} onClick={startEdit}>
-              添加模块
+              {tr("Add module", "添加模块")}
             </button>
           )}
         </div>

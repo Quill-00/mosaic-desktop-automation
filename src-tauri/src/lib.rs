@@ -1,6 +1,7 @@
 mod channels;
 mod commands;
 mod community;
+mod locale;
 mod model;
 mod popo;
 mod runner;
@@ -29,6 +30,7 @@ const WIDGET_EXPANDED: (f64, f64) = (372.0, 596.0);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    locale::init_from_timezone();
     if update::try_launch_pending_at_startup() {
         return;
     }
@@ -102,6 +104,18 @@ pub fn run() {
                 }
                 db.migrated_v6 = true;
             }
+            if !db.migrated_v7 {
+                let retired_showcase = |id: &str| {
+                    matches!(id, "example-hn" | "example-crypto" | "example-quote")
+                };
+                db.tasks.retain(|task| !retired_showcase(&task.id));
+                db.executions
+                    .retain(|execution| !retired_showcase(&execution.task_id));
+                db.results.remove("example-hn");
+                db.results.remove("example-crypto");
+                db.results.remove("example-quote");
+                db.migrated_v7 = true;
+            }
             seed::repair_builtin_plugin_locations(&mut db.tasks);
 
             let inner = Arc::new(Inner::new(db, path));
@@ -162,6 +176,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::snapshot,
+            commands::set_locale,
             commands::exec_items,
             commands::open_path,
             commands::create_task,
@@ -232,9 +247,27 @@ fn build_tray(app: &tauri::App) -> tauri::Result<()> {
     use tauri::menu::{Menu, MenuItem};
     use tauri::tray::TrayIconBuilder;
 
-    let show = MenuItem::with_id(app, "show", "显示主面板", true, None::<&str>)?;
-    let widget = MenuItem::with_id(app, "widget", "显示小组件", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let show = MenuItem::with_id(
+        app,
+        "show",
+        locale::text("Show main window", "显示主面板"),
+        true,
+        None::<&str>,
+    )?;
+    let widget = MenuItem::with_id(
+        app,
+        "widget",
+        locale::text("Show widget", "显示小组件"),
+        true,
+        None::<&str>,
+    )?;
+    let quit = MenuItem::with_id(
+        app,
+        "quit",
+        locale::text("Quit", "退出"),
+        true,
+        None::<&str>,
+    )?;
     let menu = Menu::with_items(app, &[&show, &widget, &quit])?;
 
     let mut builder = TrayIconBuilder::new()

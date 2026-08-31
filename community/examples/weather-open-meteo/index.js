@@ -1,7 +1,7 @@
 const endpoint = new URL("https://api.open-meteo.com/v1/forecast");
 endpoint.search = new URLSearchParams({
-  latitude: "39.9",
-  longitude: "116.4",
+  latitude: "40.7128",
+  longitude: "-74.0060",
   current: "temperature_2m,wind_speed_10m,relative_humidity_2m",
 }).toString();
 
@@ -11,14 +11,14 @@ try {
   const data = await response.json();
   const current = data.current ?? {};
   const metrics = [
-    { label: "温度", value: `${current.temperature_2m ?? "-"}°C` },
-    { label: "湿度", value: `${current.relative_humidity_2m ?? "-"}%` },
-    { label: "风速", value: `${current.wind_speed_10m ?? "-"} km/h` },
+    { label: "Temperature", value: `${current.temperature_2m ?? "-"}°C` },
+    { label: "Humidity", value: `${current.relative_humidity_2m ?? "-"}%` },
+    { label: "Wind", value: `${current.wind_speed_10m ?? "-"} km/h` },
   ];
   console.log(JSON.stringify({
-    summary: { headline: "北京天气" },
-    card: { type: "metric", title: "天气 · 北京", metrics },
-    items: [{ title: "天气更新", at: new Date().toISOString() }],
+    summary: { headline: "New York weather" },
+    card: { type: "metric", title: "Weather · New York", metrics },
+    items: [{ title: "Weather updated", at: new Date().toISOString() }],
   }));
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

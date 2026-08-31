@@ -51,7 +51,10 @@ impl Default for UpdateStatus {
             current_version: env!("CARGO_PKG_VERSION").into(),
             state: "idle".into(),
             latest_version: None,
-            message: "启动后自动检查；安装包由 GitHub Releases 分发。".into(),
+            message: crate::locale::text(
+                "Mosaic checks automatically after launch; installers are distributed by GitHub Releases.",
+                "启动后自动检查；安装包由 GitHub Releases 分发。",
+            ),
             checked_at: None,
         }
     }
@@ -141,7 +144,10 @@ pub fn schedule_check(shared: Shared, app: AppHandle) {
     set_status(
         UpdateStatus {
             state: "checking".into(),
-            message: "正在检查 GitHub 上的新版安装包…".into(),
+            message: crate::locale::text(
+                "Checking GitHub for a new installer…",
+                "正在检查 GitHub 上的新版安装包…",
+            ),
             ..status()
         },
         &app,
@@ -155,15 +161,25 @@ pub fn schedule_check(shared: Shared, app: AppHandle) {
                     &shared,
                     format!("update-ready-{}", offer.version),
                     "success",
-                    format!("Mosaic {} 已准备好", offer.version),
-                    Some("安装包已从 GitHub 下载并通过 SHA-256 校验，将在下次启动 Mosaic 时自动安装。".into()),
+                    if crate::locale::is_chinese() {
+                        format!("Mosaic {} 已准备好", offer.version)
+                    } else {
+                        format!("Mosaic {} is ready", offer.version)
+                    },
+                    Some(crate::locale::text(
+                        "The installer was downloaded from GitHub and passed SHA-256 verification. It will install automatically the next time Mosaic starts.",
+                        "安装包已从 GitHub 下载并通过 SHA-256 校验，将在下次启动 Mosaic 时自动安装。",
+                    )),
                 );
                 set_status(
                     UpdateStatus {
                         current_version: env!("CARGO_PKG_VERSION").into(),
                         state: "ready".into(),
                         latest_version: Some(offer.version),
-                        message: "更新已安全下载，将在下次启动时安装。".into(),
+                        message: crate::locale::text(
+                            "The verified update is ready and will install on the next launch.",
+                            "更新已安全下载，将在下次启动时安装。",
+                        ),
                         checked_at: Some(checked_at),
                     },
                     &app,
@@ -174,7 +190,10 @@ pub fn schedule_check(shared: Shared, app: AppHandle) {
                     current_version: env!("CARGO_PKG_VERSION").into(),
                     state: "upToDate".into(),
                     latest_version: None,
-                    message: "当前已是最新版本。".into(),
+                    message: crate::locale::text(
+                        "You are using the latest version.",
+                        "当前已是最新版本。",
+                    ),
                     checked_at: Some(checked_at),
                 },
                 &app,
@@ -182,28 +201,37 @@ pub fn schedule_check(shared: Shared, app: AppHandle) {
             Err(error) => {
                 let github_failure = error.contains("GitHub");
                 let title = if github_failure {
-                    "无法连接到 GitHub 更新"
+                    crate::locale::text(
+                        "Unable to connect to GitHub for updates",
+                        "无法连接到 GitHub 更新",
+                    )
                 } else {
-                    "自动更新检查失败"
+                    crate::locale::text("Automatic update check failed", "自动更新检查失败")
                 };
                 let body = if github_failure {
-                    "请检查网络后在设置中重试。当前版本可以继续使用，不会安装未完成的下载。"
+                    crate::locale::text(
+                        "Check your network and retry from Settings. You can keep using this version; incomplete downloads will not be installed.",
+                        "请检查网络后在设置中重试。当前版本可以继续使用，不会安装未完成的下载。",
+                    )
                 } else {
-                    "暂时无法获取版本信息，请稍后在设置中重试。当前版本可以继续使用。"
+                    crate::locale::text(
+                        "Version information is temporarily unavailable. Retry from Settings later; you can keep using this version.",
+                        "暂时无法获取版本信息，请稍后在设置中重试。当前版本可以继续使用。",
+                    )
                 };
                 upsert_notification(
                     &shared,
                     "update-error".into(),
                     "warning",
-                    title.into(),
-                    Some(body.into()),
+                    title.clone(),
+                    Some(body),
                 );
                 set_status(
                     UpdateStatus {
                         current_version: env!("CARGO_PKG_VERSION").into(),
                         state: "error".into(),
                         latest_version: None,
-                        message: format!("{}：{}", title, error),
+                        message: format!("{}: {}", title, error),
                         checked_at: Some(checked_at),
                     },
                     &app,

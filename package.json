@@ -1,7 +1,7 @@
 {
   "name": "mosaic-desktop-automation",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Local-first Windows dashboard for scheduling, watching, running, and visualizing scripts and plugins.",
   "license": "MIT",
   "repository": "https://github.com/Quill-00/mosaic-desktop-automation",

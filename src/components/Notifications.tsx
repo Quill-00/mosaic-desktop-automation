@@ -3,8 +3,10 @@ import { AlertTriangle, Bell, Check, Trash2, X } from "lucide-react";
 import { api } from "../api";
 import { relTime } from "../api";
 import type { Snapshot } from "../types";
+import { useI18n } from "../i18n";
 
 export default function NotificationsView({ snap }: { snap: Snapshot }) {
+  const { locale, t } = useI18n();
   const [confirmClear, setConfirmClear] = useState(false);
   const items = snap.notifications;
   const unread = items.filter((item) => !item.read).length;
@@ -22,26 +24,26 @@ export default function NotificationsView({ snap }: { snap: Snapshot }) {
   return (
     <div className="view">
       <div className="view-head notification-head">
-        <h2 className="view-title">通知</h2>
-        <span className="muted">{unread} 未读</span>
+        <h2 className="view-title">{t("Notifications", "通知")}</h2>
+        <span className="muted">{t(`${unread} unread`, `${unread} 未读`)}</span>
         {unread > 0 && (
           <button className="btn" onClick={() => api.markAllRead()}>
-            <Check size={14} /> 全部已读
+            <Check size={14} /> {t("Mark all read", "全部已读")}
           </button>
         )}
         {read > 0 && (
           <button className="btn" onClick={() => api.clearNotifications(true)}>
-            <Trash2 size={14} /> 清理已读
+            <Trash2 size={14} /> {t("Clear read", "清理已读")}
           </button>
         )}
         {items.length > 0 && (
           <button className="btn danger" onClick={() => setConfirmClear(true)}>
-            <Trash2 size={14} /> 清空全部
+            <Trash2 size={14} /> {t("Clear all", "清空全部")}
           </button>
         )}
       </div>
 
-      {items.length === 0 && <div className="empty">通知已经清理干净。</div>}
+      {items.length === 0 && <div className="empty">{t("No notifications.", "通知已经清理干净。")}</div>}
 
       <div className="rows">
         {items.map((item) => (
@@ -64,8 +66,8 @@ export default function NotificationsView({ snap }: { snap: Snapshot }) {
                   event.stopPropagation();
                   void api.deleteNotification(item.id);
                 }}
-                aria-label={`删除通知：${item.title}`}
-                title="删除通知"
+                aria-label={t(`Delete notification: ${item.title}`, `删除通知：${item.title}`)}
+                title={t("Delete notification", "删除通知")}
               >
                 <X size={14} />
               </button>
@@ -76,7 +78,7 @@ export default function NotificationsView({ snap }: { snap: Snapshot }) {
               </div>
             )}
             <div className="row-meta">
-              <span>{relTime(item.at)}</span>
+              <span>{relTime(item.at, locale)}</span>
             </div>
           </div>
         ))}
@@ -85,10 +87,10 @@ export default function NotificationsView({ snap }: { snap: Snapshot }) {
       {confirmClear && (
         <div className="modal" onClick={() => setConfirmClear(false)}>
           <div className="sheet confirm-sheet" role="alertdialog" aria-modal="true" aria-labelledby="clear-notifications-title" onClick={(event) => event.stopPropagation()}>
-            <h3 id="clear-notifications-title">清空全部通知？</h3>
-            <p className="muted small">只删除通知记录，不会删除脚本产物、运行记录或插件配置。</p>
+            <h3 id="clear-notifications-title">{t("Clear all notifications?", "清空全部通知？")}</h3>
+            <p className="muted small">{t("This only removes notification records. Script outputs, run history, and plugin settings are preserved.", "只删除通知记录，不会删除脚本产物、运行记录或插件配置。")}</p>
             <div className="sheet-actions">
-              <button className="btn" onClick={() => setConfirmClear(false)}>取消</button>
+              <button className="btn" onClick={() => setConfirmClear(false)}>{t("Cancel", "取消")}</button>
               <button
                 className="btn danger"
                 onClick={() => {
@@ -96,7 +98,7 @@ export default function NotificationsView({ snap }: { snap: Snapshot }) {
                   setConfirmClear(false);
                 }}
               >
-                <Trash2 size={14} /> 清空全部
+                <Trash2 size={14} /> {t("Clear all", "清空全部")}
               </button>
             </div>
           </div>

@@ -59,7 +59,7 @@ export const api = {
   checkForUpdates: () => invoke("check_for_updates"),
 };
 
-export function errorMessage(error: unknown): string {
+export function errorMessage(error: unknown, fallback = "Operation failed. Please try again."): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
   if (typeof error === "string" && error.trim()) return error.trim();
   try {
@@ -68,7 +68,7 @@ export function errorMessage(error: unknown): string {
   } catch {
     // Fall through to a useful, user-facing default.
   }
-  return "操作失败，请稍后重试。";
+  return fallback;
 }
 
 export function useSnapshot() {
@@ -109,15 +109,21 @@ export function useSnapshot() {
   return { snap, error, refresh };
 }
 
-export function relTime(iso?: string | null): string {
+export function relTime(iso?: string | null, locale: "en" | "zh-CN" = "en"): string {
   if (!iso) return "";
   const t = new Date(iso).getTime();
   if (isNaN(t)) return "";
   const s = Math.floor((Date.now() - t) / 1000);
-  if (s < 60) return "刚刚";
-  if (s < 3600) return `${Math.floor(s / 60)} 分钟前`;
-  if (s < 86400) return `${Math.floor(s / 3600)} 小时前`;
-  return `${Math.floor(s / 86400)} 天前`;
+  if (locale === "zh-CN") {
+    if (s < 60) return "刚刚";
+    if (s < 3600) return `${Math.floor(s / 60)} 分钟前`;
+    if (s < 86400) return `${Math.floor(s / 3600)} 小时前`;
+    return `${Math.floor(s / 86400)} 天前`;
+  }
+  if (s < 60) return "just now";
+  if (s < 3600) return `${Math.floor(s / 60)} min ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)} hr ago`;
+  return `${Math.floor(s / 86400)} d ago`;
 }
 
 export function fmtDuration(secs: number): string {

@@ -1,53 +1,36 @@
-# 隐私与安全说明
+# Privacy and security
 
-## 无账户和许可门限
+## No account or license gate
 
-Mosaic Desktop Automation 是 MIT 开源软件。官方构建不包含用户登录、会员、订阅、激活码、设备绑定或其他软件的许可门限。
+Mosaic Desktop Automation is MIT-licensed software. Official builds contain no login, membership, subscription, activation code, device binding, or gate copied from another product.
 
-自动更新只调用 Mosaic 自己的版本检查范围。请求包含当前版本和一个固定的公开应用标识；该标识不能访问用户、订单、订阅或其他应用数据。客户端不调用任何 license、login、subscription 或 payment 接口。
+The update client accesses only Mosaic's public version metadata. Requests contain the current version and a fixed public application identifier that cannot access users, orders, subscriptions, or other applications. The client does not call license, login, subscription, or payment endpoints.
 
-## 本机数据
+## Local data
 
-任务、执行记录、通知、结果和公开配置保存在 `%APPDATA%\com.mosaic.desktop\db.json`。单文件导入副本和社区包也位于该应用专属数据目录。
+Tasks, execution records, notifications, results, and public configuration live in `%APPDATA%\com.mosaic.desktop\db.json`. Imported scripts and community packages stay inside Mosaic's application data directory.
 
-用户填写的 QQ AppSecret 等渠道密钥由系统钥匙串接口保存到 Windows 凭据管理器。界面快照只暴露“是否已配置”，不返回明文。
+User-entered secrets such as QQ AppSecret are stored through the system keychain in Windows Credential Manager. UI snapshots expose only whether a credential is configured, never the plaintext value.
 
-Mosaic 没有遥测上传。任务本身可能按用户配置访问网络或写入文件；预置公开示例的网络目标在 README 中列出。
+Mosaic has no telemetry upload. User tasks can access the network or filesystem when configured to do so.
 
-## 自动更新信任链
+## Update trust chain
 
-- 版本响应必须由 Mosaic 专属 RSA 私钥签名；客户端只内置公开 RSA 公钥。
-- 安装地址必须属于本项目 GitHub Release；不使用项目方流量服务器分发安装包。
-- SHA-256 必须是完整的 64 位十六进制摘要。
-- 下载只写 `.partial`，限制重定向、单次读取超时与 256 MB 最大体积。
-- 完成后检查内容长度、PE 头和 SHA-256；失败即删除临时文件，不产生待安装状态。
-- 下一次进程启动会再次校验暂存安装包 SHA-256；通过后才启动安装，并早于窗口、机器人、脚本和常驻插件。
-- 更新失败不是使用门限；用户可以继续运行当前版本并手动更新。
+- Version metadata must be signed by Mosaic's dedicated RSA private key; the client contains only its public key.
+- Installer URLs must belong to this project's GitHub Releases.
+- Downloads use `.partial` files, strict redirect and timeout handling, and a 256 MB limit.
+- Length, PE headers, and SHA-256 are checked before staging.
+- SHA-256 is checked again on the next launch before Inno Setup starts.
+- Update failure never blocks the installed version.
 
-## 第三方代码
+## Third-party code
 
-社区包和本地脚本以当前 Windows 用户权限执行。权限声明和源码扫描用于帮助决策，目前不是系统级强制沙箱。
+Community packages and local scripts run with the current Windows user's permissions. Permission declarations and source scans help users review risk but are not an operating-system sandbox.
 
-Mosaic 在社区安装阶段防护：
+Community installation requires HTTPS except for loopback development, same-origin package URLs, a 50 MB download limit, at most 512 files, and at most 128 MB extracted content. Mosaic rejects absolute paths, traversal, symlinks, hash mismatches, manifest mismatches, and missing entries. Installation never executes code, and new packages stay disabled.
 
-- 注册表要求 HTTPS；仅本机联调允许 loopback HTTP。
-- 包文件必须与注册表同源。
-- 下载包最大 50 MB、最多 512 个文件、解压后最大 128 MB。
-- 拒绝绝对路径、`..` 路径穿越和符号链接。
-- 校验 ZIP SHA-256，并比对包 ID、版本、运行时和入口。
-- 安装不执行代码；新增任务默认关闭。
+## Public-release redaction
 
-## 公开发布脱敏要求
+Source, issues, releases, screenshots, and packages must not contain credentials, cookies, sessions, private keys, runtime databases, logs, private absolute paths, personal desktop content, or Agent/Codex/Claude conversation history. README screenshots must contain only sanitized application data and no desktop background.
 
-源码、Issue、Release、截图和社区包不得包含：
-
-- API key、token、Cookie、密码、OAuth 会话、私钥或系统凭据；
-- 用户真实任务数据库、产物、日志、浏览器状态或本机绝对路径；
-- Agent/Codex/Claude 对话历史、内部检查点、内部设计文档或开发录屏；
-- 能识别个人桌面、账号、联系人、文件名或通知的背景内容。
-
-README 截图只截取应用窗口，并使用干净背景处理悬浮界面透明区域。
-
-## 报告漏洞
-
-请按 [SECURITY.md](../SECURITY.md) 使用 GitHub 私密漏洞报告，不要在公开 Issue 中粘贴利用代码、凭据或用户数据。
+Report vulnerabilities through GitHub private vulnerability reporting as described in [SECURITY.md](../SECURITY.md). Never post credentials or user data in a public issue.
