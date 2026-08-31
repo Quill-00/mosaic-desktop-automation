@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "name": "Mosaic 示例社区源",
+  "packages": [
+    {
+      "id": "hello-mosaic",
+      "name": "Hello Mosaic",
+      "version": "1.0.0",
+      "summary": "验证社区注册、安装和结构化输出的最小示例。",
+      "description": "只输出一条本地 JSON，不读取文件、不写入文件、不访问网络。",
+      "author": "Mosaic Community",
+      "license": "MIT",
+      "repository": "https://example.org/mosaic-community",
+      "homepage": "https://example.org/mosaic-community/hello-mosaic",
+      "tags": ["example", "starter"],
+      "kind": "script",
+      "runtime": "node",
+      "entry": "index.js",
+      "args": [],
+      "lifecycle": "ephemeral",
+      "permissions": {
+        "readPaths": [],
+        "writePaths": [],
+        "allowHosts": [],
+        "channels": []
+      },
+      "packageUrl": "packages/hello-mosaic-1.0.0.zip",
+      "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  ]
+}

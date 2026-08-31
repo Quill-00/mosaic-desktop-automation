@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Quill-00/mosaic-desktop-automation/security/advisories/new
+    about: Report vulnerabilities privately; never post credentials or user data in an issue.

@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mosaic.local/schemas/community-registry-v1.json",
+  "title": "Mosaic Community Registry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "packages"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": 1 },
+    "name": { "type": "string", "maxLength": 80 },
+    "packages": {
+      "type": "array",
+      "maxItems": 500,
+      "items": { "$ref": "#/$defs/package" }
+    }
+  },
+  "$defs": {
+    "slug": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9._-]+$"
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "readPaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "writePaths": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "allowHosts": { "type": "array", "items": { "type": "string" }, "default": [] },
+        "channels": { "type": "array", "items": { "type": "string" }, "default": [] }
+      }
+    },
+    "package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "version", "summary", "author", "runtime", "entry", "packageUrl", "sha256"],
+      "properties": {
+        "id": { "$ref": "#/$defs/slug" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "version": { "$ref": "#/$defs/slug" },
+        "summary": { "type": "string", "maxLength": 240 },
+        "description": { "type": "string", "maxLength": 4000, "default": "" },
+        "author": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "license": { "type": "string", "maxLength": 40, "default": "" },
+        "repository": { "type": "string", "format": "uri", "default": "" },
+        "homepage": { "type": "string", "format": "uri", "default": "" },
+        "tags": { "type": "array", "maxItems": 12, "items": { "type": "string", "maxLength": 32 }, "default": [] },
+        "kind": { "enum": ["script", "plugin"], "default": "script" },
+        "runtime": { "enum": ["node", "python", "powerShell", "executable"] },
+        "entry": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "args": { "type": "array", "maxItems": 32, "items": { "type": "string", "maxLength": 1024 }, "default": [] },
+        "lifecycle": { "enum": ["ephemeral", "resident"], "default": "ephemeral" },
+        "permissions": { "$ref": "#/$defs/permissions" },
+        "packageUrl": { "type": "string", "minLength": 1, "maxLength": 2048 },
+        "sha256": { "type": "string", "pattern": "^[A-Fa-f0-9]{64}$" }
+      }
+    }
+  }
+}

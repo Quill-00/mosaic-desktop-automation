@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://mosaic.local/schemas/community-package-v1.json",
+  "title": "Mosaic Package Manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "id", "version", "runtime", "entry"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{2,64}$" },
+    "version": { "type": "string", "pattern": "^[A-Za-z0-9._-]{2,64}$" },
+    "runtime": { "enum": ["node", "python", "powerShell", "executable"] },
+    "entry": { "type": "string", "minLength": 1, "maxLength": 240 }
+  }
+}

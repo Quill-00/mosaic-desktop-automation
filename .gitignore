@@ -1,0 +1,77 @@
+# Dependencies and generated output
+node_modules/
+dist/
+dist-ssr/
+src-tauri/target/
+src-tauri/gen/schemas/
+installer/stage/
+installer/output/
+artifacts/
+.release-qa/
+.runtime*/
+
+# Runtime state must never be distributed
+db.json
+*.db
+*.sqlite
+*.sqlite3
+*.jsonl
+logs/
+*.log
+*.partial
+pending-update.json
+
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+secrets.*
+credentials.*
+installer/.release.env
+
+# Agent, editor, checkpoint, and conversation history
+.agents/
+.codex/
+.claude/
+.cursor/
+.vscode/
+.idea/
+AGENTS.md
+*conversation*
+*transcript*
+*chat-history*
+.codex-checkpoint-*
+
+# Local build and QA archives
+*.exe
+*.msi
+*.dmg
+*.appx
+*.zip
+!community/packages/*.zip
+*.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+
+# Public documentation uses an allowlist. Internal design notes and arbitrary
+# Word/Markdown files stay local unless deliberately added here.
+*.md
+*.doc
+*.docx
+!README.md
+!CONTRIBUTING.md
+!CODE_OF_CONDUCT.md
+!SECURITY.md
+!docs/INSTALLATION.md
+!docs/IMPORTING-SCRIPTS-AND-PLUGINS.md
+!docs/PRIVACY-AND-SECURITY.md
+!community/README.md
+!.github/PULL_REQUEST_TEMPLATE.md

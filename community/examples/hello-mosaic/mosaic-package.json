@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "id": "hello-mosaic",
+  "version": "1.0.0",
+  "runtime": "node",
+  "entry": "index.js"
+}
