@@ -12,7 +12,7 @@
 Download the installer and matching checksum from [GitHub Releases](https://github.com/Quill-00/mosaic-desktop-automation/releases/latest), then verify them:
 
 ```powershell
-$installer = '.\Mosaic-Setup-0.3.1.exe'
+$installer = '.\Mosaic-Setup-0.3.2.exe'
 $actual = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 $expected = (Get-Content "$installer.sha256" -Raw).Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)[0].ToLowerInvariant()
 if ($actual -ne $expected) { throw 'SHA-256 mismatch. Delete the installer and download it again.' }

@@ -39,7 +39,7 @@ The interface supports English and Simplified Chinese. On first launch, UTC+8 sy
 3. Verify the installer in PowerShell before running it:
 
 ```powershell
-$installer = '.\Mosaic-Setup-0.3.1.exe'
+$installer = '.\Mosaic-Setup-0.3.2.exe'
 $actual = (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant()
 $expected = (Get-Content "$installer.sha256" -Raw).Split(' ', [System.StringSplitOptions]::RemoveEmptyEntries)[0].ToLowerInvariant()
 if ($actual -ne $expected) { throw 'SHA-256 mismatch. Delete the installer and download it again.' }
