@@ -41,6 +41,11 @@ Name: "startup"; Description: "登录 Windows 后自动启动 Mosaic"; GroupDesc
 
 [Files]
 Source: "{#SourceRoot}\Mosaic.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#SourceRoot}\resources\cliproxyapi\cli-proxy-api.exe"; DestDir: "{app}\resources\cliproxyapi"; Flags: ignoreversion
+Source: "{#SourceRoot}\resources\cliproxyapi\LICENSE"; DestDir: "{app}\resources\cliproxyapi"; Flags: ignoreversion
+Source: "{#SourceRoot}\resources\cliproxyapi\config.example.yaml"; DestDir: "{app}\resources\cliproxyapi"; Flags: ignoreversion
+Source: "{#SourceRoot}\resources\cliproxyapi\config.empty.yaml"; DestDir: "{app}\resources\cliproxyapi"; Flags: ignoreversion
+Source: "{#SourceRoot}\resources\cliproxyapi\PROVENANCE.txt"; DestDir: "{app}\resources\cliproxyapi"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Mosaic"; Filename: "{app}\Mosaic.exe"; WorkingDir: "{app}"

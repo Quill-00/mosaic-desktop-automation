@@ -12,6 +12,8 @@ Tasks, execution records, notifications, results, and public configuration live 
 
 User-entered secrets such as QQ AppSecret are stored through the system keychain in Windows Credential Manager. UI snapshots expose only whether a credential is configured, never the plaintext value.
 
+The bundled CLIProxyAPI example is isolated from every global CPA installation. The release build includes only a hash-pinned official executable and license, the unmodified official example configuration, provenance, and Mosaic's credential-free template. Runtime state lives under Mosaic's own application-data directory, is created only when absent, and is launched through an explicit `--config` path. Mosaic never reads, copies, uploads, or overwrites global CPA configuration, OAuth data, or login credentials; release builds do not fall back to Scoop or another machine-wide CPA.
+
 Mosaic has no telemetry upload. User tasks can access the network or filesystem when configured to do so.
 
 ## Update trust chain

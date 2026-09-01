@@ -9,6 +9,9 @@ installer/output/
 artifacts/
 .release-qa/
 .runtime*/
+vendor/cliproxyapi/cache/
+vendor/cliproxyapi/stage/
+vendor/cliproxyapi/inspect/
 
 # Runtime state must never be distributed
 db.json

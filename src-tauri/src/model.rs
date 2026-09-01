@@ -489,6 +489,10 @@ impl Default for PopoConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct WindowConfig {
+    /// Whether Mosaic launches when the current Windows user signs in. The
+    /// snapshot refreshes this field from HKCU instead of trusting db.json.
+    #[serde(default)]
+    pub auto_start: bool,
     #[serde(default = "default_true")]
     pub edge_hide: bool,
     #[serde(default = "default_true")]
@@ -505,6 +509,7 @@ pub struct WindowConfig {
 impl Default for WindowConfig {
     fn default() -> Self {
         WindowConfig {
+            auto_start: false,
             edge_hide: true,
             minimize_to_tray: true,
             widget: false,

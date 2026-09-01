@@ -1,0 +1,22 @@
+# Mosaic ships this credential-free configuration template. On first use it is
+# copied to Mosaic's per-user application data directory and is never read from
+# the build machine's CLIProxyAPI/Scoop configuration.
+host: "127.0.0.1"
+port: 8317
+
+tls:
+  enable: false
+  cert: ""
+  key: ""
+
+remote-management:
+  allow-remote: false
+  secret-key: ""
+  disable-control-panel: true
+
+auth-dir: "./auth"
+api-keys: []
+debug: false
+pprof:
+  enable: false
+  addr: "127.0.0.1:8316"

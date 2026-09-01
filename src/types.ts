@@ -138,6 +138,7 @@ export interface BotChannel {
 }
 
 export interface WindowConfig {
+  autoStart: boolean;
   edgeHide: boolean;
   minimizeToTray: boolean;
   widget: boolean;

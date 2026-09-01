@@ -5,7 +5,7 @@
 - Windows 10 or 11, x64.
 - Microsoft Edge WebView2 Runtime. Supported Windows installations usually include it.
 - Mosaic itself does not require Node.js. Node examples and imported Node scripts require Node.js 20 or newer.
-- `CLIProxyAPI` is only a disabled example entry. Install that program separately if you want to use it; Mosaic never distributes its binary, configuration, or credentials.
+- `CLIProxyAPI` is included as a disabled example from a pinned, SHA-256-verified official MIT release. The original upstream `config.example.yaml` is retained for learning, while Mosaic starts CPA only with its own credential-free per-user configuration.
 
 ## Install a release
 
@@ -28,6 +28,7 @@ Unsigned releases can trigger a Windows SmartScreen unknown-publisher warning. D
 - Imported single-file scripts: `%APPDATA%\com.mosaic.desktop\scripts\`
 - Staged updates: `%LOCALAPPDATA%\Mosaic\Updates\`
 - Channel credentials: Windows Credential Manager, never `db.json`
+- Mosaic CPA runtime: `%APPDATA%\com.mosaic.desktop\cliproxyapi\`; it is separate from global CPA/Scoop configuration and is created only if absent
 
 Do not attach these directories to issues. Share only the smallest manually redacted reproduction.
 
@@ -38,6 +39,12 @@ Mosaic accepts an update only when its version is newer, metadata signature is v
 The client downloads into a `.partial` file, enforces redirect and size limits, verifies length, Windows PE headers, and SHA-256, then stages the installer atomically. It verifies SHA-256 again on the next launch before starting Inno Setup, before any window, script, bot, or plugin starts.
 
 If GitHub is unavailable, Mosaic keeps the current version running, deletes incomplete downloads, and lets the user retry from **Settings → Automatic updates** or install manually from Releases. Update failure is never an access gate.
+
+Mosaic-managed update and community-package downloads use `http://127.0.0.1:61193` as the default proxy. Advanced users can override it for the current process with `MOSAIC_DOWNLOAD_PROXY`; build-time CPA acquisition uses the same default.
+
+## Launch at sign-in
+
+Open **Settings → Windows & display** and enable **Launch Mosaic when I sign in to Windows**. Mosaic writes only the current user's `HKCU` startup entry, so administrator access is not required. Turn the switch off to remove that entry immediately.
 
 ## Uninstall
 

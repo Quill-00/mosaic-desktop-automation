@@ -1,8 +1,10 @@
+mod autostart;
 mod channels;
 mod commands;
 mod community;
 mod locale;
 mod model;
+mod network;
 mod popo;
 mod runner;
 mod scanner;
@@ -64,7 +66,7 @@ pub fn run() {
                 db.migrated_v2 = true;
             }
             if !db.migrated_v3 {
-                for plugin in seed::builtin_plugins_v3() {
+                for plugin in seed::builtin_plugins_v3(&data_dir) {
                     if !db.tasks.iter().any(|task| task.id == plugin.id) {
                         db.tasks.push(plugin);
                     }
@@ -116,7 +118,7 @@ pub fn run() {
                 db.results.remove("example-quote");
                 db.migrated_v7 = true;
             }
-            seed::repair_builtin_plugin_locations(&mut db.tasks);
+            seed::repair_builtin_plugin_locations(&mut db.tasks, &data_dir);
 
             let inner = Arc::new(Inner::new(db, path));
             app.manage(inner.clone());

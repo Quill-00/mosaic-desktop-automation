@@ -7,6 +7,7 @@ import {
   Globe2,
   Pencil,
   Plus,
+  Power,
   RefreshCw,
   Send,
   Trash2,
@@ -445,6 +446,11 @@ export default function Settings({ snap }: { snap: Snapshot }) {
 
       <h2 className="view-title section-title">{t("Windows & display", "窗口与显示")}</h2>
       <div className="scan-tool">
+        <label className="row-inline">
+          <input type="checkbox" checked={snap.window.autoStart} onChange={(event) => void setWin({ autoStart: event.target.checked })} />
+          <Power size={15} aria-hidden="true" />
+          {t("Launch Mosaic when I sign in to Windows", "登录 Windows 后自动启动 Mosaic")}
+        </label>
         <label className="row-inline">
           <input type="checkbox" checked={snap.window.widget} onChange={(event) => void setWin({ widget: event.target.checked })} />
           {t("Desktop widget (always-available floating window)", "桌面小组件（常驻桌面的悬浮窗）")}

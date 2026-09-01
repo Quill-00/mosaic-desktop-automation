@@ -121,6 +121,8 @@ fn compose_brief(db: &Db) -> Brief {
 pub fn snapshot(state: State<'_, Shared>) -> Snapshot {
     let db = lk(&state.db);
     let running: Vec<RunningInfo> = lk(&state.running).values().map(|h| h.info()).collect();
+    let mut window = db.window.clone();
+    window.auto_start = crate::autostart::is_enabled();
     Snapshot {
         tasks: db.tasks.clone(),
         results: db.results.clone(),
@@ -141,7 +143,7 @@ pub fn snapshot(state: State<'_, Shared>) -> Snapshot {
         brief: compose_brief(&db),
         popo: db.popo.clone(),
         bot_channels: channels::bot_views(state.inner(), &db.bot_channels),
-        window: db.window.clone(),
+        window,
         community: db.community.clone(),
         update: crate::update::status(),
     }
@@ -931,6 +933,7 @@ pub fn save_window_config(
     app: AppHandle,
     config: WindowConfig,
 ) -> Result<(), String> {
+    crate::autostart::set_enabled(config.auto_start)?;
     {
         let mut db = lk(&state.db);
         db.window = config.clone();

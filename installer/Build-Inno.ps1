@@ -13,6 +13,10 @@ $stageDir = Join-Path $PSScriptRoot 'stage'
 $outputDir = Join-Path $PSScriptRoot 'output'
 $releaseExe = Join-Path $repoRoot 'src-tauri\target\release\mosaic.exe'
 $stagedExe = Join-Path $stageDir 'Mosaic.exe'
+$cpaFetchScript = Join-Path $repoRoot 'vendor\cliproxyapi\Fetch-CLIProxyAPI.ps1'
+$cpaVendorStage = Join-Path $repoRoot 'vendor\cliproxyapi\stage'
+$cpaInstallerStage = Join-Path $stageDir 'resources\cliproxyapi'
+$releaseSafetyScript = Join-Path $PSScriptRoot 'Test-ReleaseSafety.ps1'
 $previousCargoOffline = $env:CARGO_NET_OFFLINE
 $previousEncodedRustFlags = $env:CARGO_ENCODED_RUSTFLAGS
 $previousRustFlags = $env:RUSTFLAGS
@@ -20,6 +24,8 @@ $previousRustFlags = $env:RUSTFLAGS
 if (-not (Test-Path -LiteralPath $isccPath)) {
     throw "Inno Setup 6 was not found at $isccPath"
 }
+
+& $cpaFetchScript
 
 $package = Get-Content -Raw -LiteralPath $packagePath | ConvertFrom-Json
 $tauriConfig = Get-Content -Raw -LiteralPath $tauriConfigPath | ConvertFrom-Json
@@ -71,6 +77,13 @@ if (-not (Test-Path -LiteralPath $releaseExe)) {
 }
 New-Item -ItemType Directory -Force -Path $stageDir, $outputDir | Out-Null
 Copy-Item -LiteralPath $releaseExe -Destination $stagedExe -Force
+Remove-Item -LiteralPath $cpaInstallerStage -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $cpaInstallerStage -Force | Out-Null
+foreach ($name in @('cli-proxy-api.exe', 'LICENSE', 'config.example.yaml', 'config.empty.yaml', 'PROVENANCE.txt')) {
+    Copy-Item -LiteralPath (Join-Path $cpaVendorStage $name) -Destination (Join-Path $cpaInstallerStage $name) -Force
+}
+
+& $releaseSafetyScript -StageDir $stageDir
 
 & $isccPath "/DSourceRoot=$stageDir" "/DAppVersion=$appVersion" "/DOutputDir=$outputDir" (Join-Path $PSScriptRoot 'Mosaic.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }

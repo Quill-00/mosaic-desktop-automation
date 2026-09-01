@@ -2127,6 +2127,7 @@ dependencies = [
  "url",
  "uuid",
  "windows",
+ "winreg",
  "zip",
 ]
 

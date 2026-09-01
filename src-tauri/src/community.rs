@@ -104,7 +104,7 @@ fn same_origin(left: &Url, right: &Url) -> bool {
 }
 
 fn agent() -> ureq::Agent {
-    ureq::AgentBuilder::new()
+    crate::network::download_agent_builder()
         .timeout_connect(Duration::from_secs(10))
         .timeout_read(Duration::from_secs(30))
         .timeout_write(Duration::from_secs(30))

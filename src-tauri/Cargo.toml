@@ -39,6 +39,7 @@ ring = "0.17"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
+winreg = "0.55"
 
 [profile.release]
 strip = "symbols"

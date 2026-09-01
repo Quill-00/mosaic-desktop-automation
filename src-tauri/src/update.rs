@@ -264,7 +264,7 @@ fn fetch_offer() -> Result<Option<UpdateOffer>, String> {
     url.query_pairs_mut()
         .append_pair("current", env!("CARGO_PKG_VERSION"))
         .append_pair("channel", "stable");
-    let agent = ureq::AgentBuilder::new()
+    let agent = crate::network::download_agent_builder()
         .https_only(true)
         .redirects(0)
         .timeout(Duration::from_secs(12))
@@ -367,7 +367,7 @@ fn download_and_stage(offer: &UpdateOffer) -> Result<PathBuf, String> {
     let partial_path = final_path.with_extension("exe.partial");
     let _ = fs::remove_file(&partial_path);
 
-    let agent = ureq::AgentBuilder::new()
+    let agent = crate::network::download_agent_builder()
         .https_only(true)
         .redirects(5)
         .timeout_connect(Duration::from_secs(12))

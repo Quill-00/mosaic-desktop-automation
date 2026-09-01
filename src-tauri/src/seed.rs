@@ -19,12 +19,20 @@ pub fn example_tasks_v1() -> Vec<Task> {
 pub fn example_tasks_v2() -> Vec<Task> {
     let chinese = use_chinese_defaults();
     vec![node_task(
-            "example-weather",
-            if chinese { "北京天气" } else { "New York Weather" },
-            if chinese { WEATHER_SCRIPT } else { WEATHER_SCRIPT_EN },
-            Trigger::Interval { every_secs: 3600 },
-            DisplayForm::Metric,
-        )]
+        "example-weather",
+        if chinese {
+            "北京天气"
+        } else {
+            "New York Weather"
+        },
+        if chinese {
+            WEATHER_SCRIPT
+        } else {
+            WEATHER_SCRIPT_EN
+        },
+        Trigger::Interval { every_secs: 3600 },
+        DisplayForm::Metric,
+    )]
 }
 
 fn location(path: std::path::PathBuf) -> Option<(String, Option<String>)> {
@@ -91,17 +99,69 @@ fn scoop_cli_proxy_location(profile: &str) -> Option<(String, Option<String>)> {
     location(root.join("current").join("cli-proxy-api.exe"))
 }
 
-fn cli_proxy_location() -> (String, Option<String>) {
+fn bundled_cli_proxy_location(
+    data_dir: &std::path::Path,
+) -> Option<(String, Option<String>, Vec<String>)> {
+    let app_dir = std::env::current_exe().ok()?.parent()?.to_path_buf();
+    let resource_dir = app_dir.join("resources").join("cliproxyapi");
+    let executable = resource_dir.join(if cfg!(windows) {
+        "cli-proxy-api.exe"
+    } else {
+        "cli-proxy-api"
+    });
+    let template = resource_dir.join("config.empty.yaml");
+    if !executable.is_file() || !template.is_file() {
+        return None;
+    }
+
+    let runtime_dir = data_dir.join("cliproxyapi");
+    let config = prepare_isolated_cpa_config(&template, &runtime_dir).ok()?;
+    let (command, _) = location(executable)?;
+    Some((
+        command,
+        Some(runtime_dir.to_string_lossy().into_owned()),
+        vec!["--config".into(), config.to_string_lossy().into_owned()],
+    ))
+}
+
+/// Create Mosaic's private CPA runtime without touching the system/global CPA
+/// directories. An existing per-user Mosaic config is deliberately preserved.
+fn prepare_isolated_cpa_config(
+    template: &std::path::Path,
+    runtime_dir: &std::path::Path,
+) -> std::io::Result<std::path::PathBuf> {
+    std::fs::create_dir_all(runtime_dir.join("auth"))?;
+    let config = runtime_dir.join("config.yaml");
+    if !config.exists() {
+        std::fs::copy(template, &config)?;
+    }
+    Ok(config)
+}
+
+fn cli_proxy_location(data_dir: &std::path::Path) -> (String, Option<String>, Vec<String>) {
+    if let Some(bundled) = bundled_cli_proxy_location(data_dir) {
+        return bundled;
+    }
+    // Release builds are hermetic: never inspect, launch, or inherit a global
+    // CPA installation. Development builds retain explicit local conveniences.
+    if !cfg!(debug_assertions) {
+        let config = data_dir.join("cliproxyapi").join("config.yaml");
+        return (
+            "mosaic-bundled-cliproxyapi-unavailable".into(),
+            Some(data_dir.join("cliproxyapi").to_string_lossy().into_owned()),
+            vec!["--config".into(), config.to_string_lossy().into_owned()],
+        );
+    }
     if let Ok(value) = std::env::var("CLIPROXYAPI_PATH") {
         let path = std::path::PathBuf::from(value.trim());
         if let Some(found) = location(path) {
-            return found;
+            return (found.0, found.1, Vec::new());
         }
     }
     #[cfg(windows)]
     if let Ok(profile) = std::env::var("USERPROFILE") {
         if let Some(found) = scoop_cli_proxy_location(&profile) {
-            return found;
+            return (found.0, found.1, Vec::new());
         }
     }
     (
@@ -111,13 +171,14 @@ fn cli_proxy_location() -> (String, Option<String>) {
             "cli-proxy-api".into()
         },
         None,
+        Vec::new(),
     )
 }
 
-/// Keep the built-in CPA task on a physical executable path. This runs on every
-/// Mosaic start so existing databases are repaired and Scoop upgrades are
-/// picked up without overwriting a deliberately customized command.
-pub fn repair_builtin_plugin_locations(tasks: &mut [Task]) -> bool {
+/// Keep the built-in CPA task on Mosaic's verified bundled executable and an
+/// isolated per-user config. Development builds without bundled resources may
+/// still use an explicit path or Scoop installation.
+pub fn repair_builtin_plugin_locations(tasks: &mut [Task], data_dir: &std::path::Path) -> bool {
     let Some(task) = tasks
         .iter_mut()
         .find(|task| task.id == "plugin-cliproxyapi")
@@ -125,28 +186,30 @@ pub fn repair_builtin_plugin_locations(tasks: &mut [Task]) -> bool {
         return false;
     };
     let normalized = task.command.to_ascii_lowercase().replace('/', "\\");
-    let uses_scoop_junction = normalized.contains("\\scoop\\apps\\cliproxyapi\\current\\");
+    let uses_managed_install = normalized.contains("\\scoop\\apps\\cliproxyapi\\")
+        || normalized.contains("\\resources\\cliproxyapi\\cli-proxy-api.exe");
     let uses_default_name = normalized == "cli-proxy-api.exe" || normalized == "cli-proxy-api";
-    if !uses_scoop_junction && !uses_default_name {
+    if !uses_managed_install && !uses_default_name {
         return false;
     }
-    let (command, cwd) = cli_proxy_location();
-    if task.command == command && task.cwd == cwd {
+    let (command, cwd, args) = cli_proxy_location(data_dir);
+    if task.command == command && task.cwd == cwd && task.args == args {
         return false;
     }
     task.command = command;
     task.cwd = cwd;
+    task.args = args;
     true
 }
 
-pub fn builtin_plugins_v3() -> Vec<Task> {
-    let (command, cwd) = cli_proxy_location();
+pub fn builtin_plugins_v3(data_dir: &std::path::Path) -> Vec<Task> {
+    let (command, cwd, args) = cli_proxy_location(data_dir);
     vec![Task {
         id: "plugin-cliproxyapi".into(),
         nickname: "CLIProxyAPI".into(),
         command,
         kind: TaskKind::Plugin,
-        args: vec![],
+        args,
         cwd,
         trigger: Trigger::Manual,
         display: DisplayForm::Card,
@@ -175,6 +238,34 @@ pub fn is_legacy_mock(t: &Task) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn isolated_cpa_config_is_created_once_and_never_overwritten() {
+        let root = std::env::temp_dir().join(format!(
+            "mosaic-cpa-isolation-{}-{}",
+            std::process::id(),
+            uuid::Uuid::new_v4()
+        ));
+        let resource_dir = root.join("resources");
+        let runtime_dir = root.join("mosaic-data").join("cliproxyapi");
+        std::fs::create_dir_all(&resource_dir).unwrap();
+        let template = resource_dir.join("config.empty.yaml");
+        std::fs::write(&template, "api-keys: []\n").unwrap();
+
+        let config = super::prepare_isolated_cpa_config(&template, &runtime_dir).unwrap();
+        assert_eq!(std::fs::read_to_string(&config).unwrap(), "api-keys: []\n");
+        assert!(runtime_dir.join("auth").is_dir());
+
+        std::fs::write(&config, "local-user-setting: preserved\n").unwrap();
+        std::fs::write(&template, "api-keys:\n  - should-not-replace\n").unwrap();
+        super::prepare_isolated_cpa_config(&template, &runtime_dir).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(&config).unwrap(),
+            "local-user-setting: preserved\n"
+        );
+
+        std::fs::remove_dir_all(root).unwrap();
+    }
+
     #[cfg(windows)]
     #[test]
     fn compares_scoop_versions_numerically() {

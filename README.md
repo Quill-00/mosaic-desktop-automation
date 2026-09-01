@@ -52,7 +52,7 @@ Continue only when the command completes without an error. See the [installation
 A new data directory contains only credential-free public examples:
 
 - One Open-Meteo weather task demonstrates live cards without an API key, cookie, or account. UTC+8 installations receive the Chinese example; other timezones receive the English example.
-- `CLIProxyAPI` is a disabled resident-plugin entry only. Mosaic does not bundle its program, configuration, or login credentials. It looks for a local Scoop installation or the executable specified by `CLIPROXYAPI_PATH`.
+- `CLIProxyAPI` is bundled from a pinned official MIT-licensed Release after SHA-256 verification and stays disabled by default. Mosaic includes the upstream `config.example.yaml` for reference, but runs against a separate credential-free template copied into the user's application-data directory. No build-machine CPA configuration, OAuth file, or login credential is read or packaged.
 - The official community source includes `Hello Mosaic` and a keyless Open-Meteo weather script. Installed packages remain disabled until the user reviews and enables them.
 
 You can disable or delete every example.

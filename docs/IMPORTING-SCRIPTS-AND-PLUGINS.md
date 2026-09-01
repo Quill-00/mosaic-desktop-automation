@@ -64,7 +64,9 @@ Interactive CLI answers can be provided one per line through the stdin field. Do
 
 ## CLIProxyAPI example
 
-Fresh installs include a disabled `CLIProxyAPI` resident-plugin entry. It contains no binary, configuration, account, cookie, or token. On Windows, Mosaic looks for a physical Scoop installation path, or uses the full path supplied through `CLIPROXYAPI_PATH`.
+Fresh installs include a disabled `CLIProxyAPI` resident-plugin entry and a pinned official Windows binary verified against the upstream SHA-256 checksum. The unmodified upstream `config.example.yaml` is included so users can see every supported option.
+
+Mosaic does **not** import or inspect global CPA/Scoop configuration, OAuth files, cookies, accounts, or tokens. On first use it copies a credential-free template to `%APPDATA%\com.mosaic.desktop\cliproxyapi\config.yaml`, creates an adjacent private `auth` directory, and always starts the bundled CPA with an explicit `--config` path. If that Mosaic-local config already exists, upgrades never overwrite it. Development builds may use `CLIPROXYAPI_PATH` or Scoop only when no packaged resources exist; release builds never fall back to a global installation.
 
 ## Community packages
 
