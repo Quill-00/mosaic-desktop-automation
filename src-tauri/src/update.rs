@@ -1,8 +1,6 @@
 use crate::model::Notification;
 use crate::state::{lk, Shared};
-use base64::Engine;
 use chrono::Local;
-use ring::signature;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs::{self, File};
@@ -11,16 +9,12 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter};
 use url::Url;
 
-const VERSION_CHECK_URL: &str = "https://smalto.tech/mc/api/v1/version/check";
-// This is an application identifier, not a user credential. The version service
-// stores only its SHA-256 and scopes it to Mosaic's public metadata endpoint.
-const PUBLIC_APP_KEY: &str = "mck_dde0a9a24e0ccdd321d362c9a2bdc59040645d1ce0c98a4c";
-// PKCS#1 RSAPublicKey DER. The matching private key never leaves the metadata service.
-const SIGNING_PUBLIC_KEY_DER_B64: &str = "MIIBigKCAYEAnalkipLyJEepHp9ZLwJmnNWm+eCSdeHAu/HUi2dUf/HYJL6+qkkATwm9dZcAmaHmbpBuNL5g/87DwM32Qa+/fKC8YvIK/Fy/4JwdRRyixPuWUUIlPmTap8DjH4RKy2W92iR/yx3/4JRmV3ko8jlG3xDPorMKIhAiNTawI/udBYdTVy42KX5Am+se3kxwZahkg1D6bCPv1ZblF9zfsj86OWSoEyihoqKABrc72DyQO817Ij80S+PpmS5GuOSVgcBDZZhEfslVxQ0jlXvC+5RB7siHtz+8H+vWckqtmV3vju1C4WKoc8vxzwDwyfqCm79Vm94/OeKq1sSrXjRJ03p7Ko/W7rOC0rJIuwm95boTbtPjn7VpOnSVfPmrwGvkNGQ97bcnyk6IFfHq3s4nl5+LI8nGgqlpR4bnryP/YVoG9h+3dhC3JVZuPvGZSCyUOcxy7nEoa9reGbFQKv4+Izxi2I+BWBcaRm/EVYPzFu1e5gW105Z3HhlIV8iP22ThYcrDAgMBAAE=";
+const LATEST_RELEASE_API: &str =
+    "https://api.github.com/repos/Quill-00/mosaic-desktop-automation/releases/latest";
 const MAX_INSTALLER_BYTES: u64 = 256 * 1024 * 1024;
 const INSTALLER_ARGS: &[&str] = &[
     "/VERYSILENT",
@@ -61,13 +55,15 @@ impl Default for UpdateStatus {
 }
 
 #[derive(Debug, Deserialize)]
-struct VersionEnvelope {
-    ok: bool,
-    latest_version: Option<String>,
-    download_url: Option<String>,
-    sha256: Option<String>,
-    #[serde(default)]
-    has_update: bool,
+struct GithubRelease {
+    tag_name: String,
+    assets: Vec<GithubAsset>,
+}
+
+#[derive(Debug, Deserialize)]
+struct GithubAsset {
+    name: String,
+    browser_download_url: String,
 }
 
 #[derive(Debug)]
@@ -260,62 +256,50 @@ fn check_and_stage() -> Result<Option<UpdateOffer>, String> {
 }
 
 fn fetch_offer() -> Result<Option<UpdateOffer>, String> {
-    let mut url = Url::parse(VERSION_CHECK_URL).map_err(|error| error.to_string())?;
-    url.query_pairs_mut()
-        .append_pair("current", env!("CARGO_PKG_VERSION"))
-        .append_pair("channel", "stable");
     let agent = crate::network::download_agent_builder()
         .https_only(true)
         .redirects(0)
         .timeout(Duration::from_secs(12))
         .build();
     let response = agent
-        .get(url.as_str())
-        .set("X-App-Key", PUBLIC_APP_KEY)
+        .get(LATEST_RELEASE_API)
+        .set("Accept", "application/vnd.github+json")
+        .set("X-GitHub-Api-Version", "2022-11-28")
         .set("User-Agent", concat!("Mosaic/", env!("CARGO_PKG_VERSION")))
         .call()
-        .map_err(|error| format!("版本服务不可用 ({})", error))?;
-    let timestamp = response
-        .header("X-MC-Timestamp")
-        .ok_or_else(|| "版本响应缺少签名时间".to_string())?
+        .map_err(|error| format!("GitHub 版本检查失败 ({})", error))?;
+    let release: GithubRelease = response
+        .into_json()
+        .map_err(|error| format!("GitHub Release 响应无效 ({})", error))?;
+    let release_tag = release.tag_name.trim().to_string();
+    let version = release_tag
+        .trim()
+        .trim_start_matches(['v', 'V'])
         .to_string();
-    let algorithm = response
-        .header("X-MC-Signature-Algorithm")
-        .ok_or_else(|| "版本响应缺少签名算法".to_string())?
-        .to_string();
-    let signature = response
-        .header("X-MC-Signature")
-        .ok_or_else(|| "版本响应缺少签名".to_string())?
-        .to_string();
-    let body = response
-        .into_string()
-        .map_err(|error| format!("读取版本响应失败 ({})", error))?;
-    verify_response_signature(&timestamp, &algorithm, &signature, &body)?;
-    let envelope: VersionEnvelope =
-        serde_json::from_str(&body).map_err(|error| format!("版本响应格式无效 ({})", error))?;
-    if !envelope.ok {
-        return Err("版本服务拒绝了请求".into());
+    if version.is_empty() {
+        return Err("GitHub Release 缺少版本号".into());
     }
-    if !envelope.has_update {
+    if compare_versions(env!("CARGO_PKG_VERSION"), &version) >= 0 {
         return Ok(None);
     }
-    let version = envelope
-        .latest_version
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| "新版缺少版本号".to_string())?;
-    if compare_versions(env!("CARGO_PKG_VERSION"), &version) >= 0 {
-        return Err("版本服务返回了非递增版本".into());
-    }
-    let download_url = envelope
-        .download_url
-        .filter(|value| !value.trim().is_empty())
-        .ok_or_else(|| "新版缺少 GitHub 下载地址".to_string())?;
-    validate_github_release_url(&download_url)?;
-    let sha256 = envelope
-        .sha256
-        .map(|value| value.trim().to_ascii_lowercase())
-        .filter(|value| is_sha256(value))
-        .ok_or_else(|| "新版缺少有效的 SHA-256".to_string())?;
+
+    let installer_name = format!("Mosaic-Setup-{version}.exe");
+    let checksum_name = format!("{installer_name}.sha256");
+    let download_url = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == installer_name)
+        .map(|asset| asset.browser_download_url.clone())
+        .ok_or_else(|| format!("GitHub Release 缺少 {installer_name}"))?;
+    let checksum_url = release
+        .assets
+        .iter()
+        .find(|asset| asset.name == checksum_name)
+        .map(|asset| asset.browser_download_url.clone())
+        .ok_or_else(|| format!("GitHub Release 缺少 {checksum_name}"))?;
+    validate_github_release_asset_url(&download_url, &release_tag, &installer_name)?;
+    validate_github_release_asset_url(&checksum_url, &release_tag, &checksum_name)?;
+    let sha256 = fetch_release_checksum(&checksum_url, &installer_name)?;
     Ok(Some(UpdateOffer {
         version,
         download_url,
@@ -323,35 +307,42 @@ fn fetch_offer() -> Result<Option<UpdateOffer>, String> {
     }))
 }
 
-fn verify_response_signature(
-    timestamp: &str,
-    algorithm: &str,
-    encoded_signature: &str,
-    body: &str,
-) -> Result<(), String> {
-    if !algorithm.eq_ignore_ascii_case("RSA-SHA256") {
-        return Err("版本响应使用了不支持的签名算法".into());
+fn fetch_release_checksum(url: &str, installer_name: &str) -> Result<String, String> {
+    let response = crate::network::download_agent_builder()
+        .https_only(true)
+        .redirects(5)
+        .timeout(Duration::from_secs(12))
+        .build()
+        .get(url)
+        .set("User-Agent", concat!("Mosaic/", env!("CARGO_PKG_VERSION")))
+        .call()
+        .map_err(|error| format!("GitHub 校验文件下载失败 ({error})"))?;
+    let final_url =
+        Url::parse(response.get_url()).map_err(|_| "GitHub 校验文件重定向地址无效".to_string())?;
+    if final_url.scheme() != "https" {
+        return Err("GitHub 校验文件被重定向到非 HTTPS 地址".into());
     }
-    let timestamp_value = timestamp
-        .parse::<u64>()
-        .map_err(|_| "版本响应签名时间无效".to_string())?;
-    let now = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map_err(|_| "系统时间无效".to_string())?
-        .as_secs();
-    if now.abs_diff(timestamp_value) > 300 {
-        return Err("版本响应签名已过期，请检查系统时间".into());
+    let mut body = Vec::new();
+    response
+        .into_reader()
+        .take(4097)
+        .read_to_end(&mut body)
+        .map_err(|error| format!("GitHub 校验文件读取失败 ({error})"))?;
+    if body.len() > 4096 {
+        return Err("GitHub 校验文件过大".into());
     }
-    let public_key = base64::engine::general_purpose::STANDARD
-        .decode(SIGNING_PUBLIC_KEY_DER_B64)
-        .map_err(|_| "内置更新公钥无效".to_string())?;
-    let signature_bytes = base64::engine::general_purpose::STANDARD
-        .decode(encoded_signature)
-        .map_err(|_| "版本响应签名编码无效".to_string())?;
-    let payload = format!("{}.{}", timestamp, body);
-    signature::UnparsedPublicKey::new(&signature::RSA_PKCS1_2048_8192_SHA256, public_key)
-        .verify(payload.as_bytes(), &signature_bytes)
-        .map_err(|_| "版本响应签名验证失败".to_string())
+    let text = String::from_utf8(body).map_err(|_| "GitHub 校验文件不是 UTF-8".to_string())?;
+    parse_release_checksum(&text, installer_name)
+}
+
+fn parse_release_checksum(text: &str, installer_name: &str) -> Result<String, String> {
+    let mut parts = text.split_whitespace();
+    let checksum = parts.next().unwrap_or_default().to_ascii_lowercase();
+    let file_name = parts.next().unwrap_or_default().trim_start_matches('*');
+    if !is_sha256(&checksum) || file_name != installer_name || parts.next().is_some() {
+        return Err("GitHub Release 的 SHA-256 文件格式无效".into());
+    }
+    Ok(checksum)
 }
 
 fn download_and_stage(offer: &UpdateOffer) -> Result<PathBuf, String> {
@@ -534,6 +525,23 @@ fn validate_github_release_url(value: &str) -> Result<Url, String> {
     Ok(parsed)
 }
 
+fn validate_github_release_asset_url(
+    value: &str,
+    tag: &str,
+    file_name: &str,
+) -> Result<Url, String> {
+    let parsed = validate_github_release_url(value)?;
+    if !safe_file_component(tag) || !safe_file_component(file_name) {
+        return Err("GitHub Release 标签或文件名无效".into());
+    }
+    let expected =
+        format!("/Quill-00/mosaic-desktop-automation/releases/download/{tag}/{file_name}");
+    if parsed.path() != expected {
+        return Err("GitHub Release 资产与版本不匹配".into());
+    }
+    Ok(parsed)
+}
+
 fn safe_file_component(value: &str) -> bool {
     !value.is_empty()
         && value.len() <= 160
@@ -649,7 +657,7 @@ mod tests {
             "http://github.com/Quill-00/mosaic-desktop-automation/releases/download/v1/a.exe"
         )
         .is_err());
-        assert!(validate_github_release_url("https://download.smalto.tech/Mosaic.exe").is_err());
+        assert!(validate_github_release_url("https://example.com/Mosaic.exe").is_err());
         assert!(validate_github_release_url(
             "https://github.com/other/repo/releases/download/v1/a.exe"
         )
@@ -661,5 +669,39 @@ mod tests {
         assert!(is_sha256(&"a".repeat(64)));
         assert!(!is_sha256(&"g".repeat(64)));
         assert!(!is_sha256(&"a".repeat(63)));
+    }
+
+    #[test]
+    fn release_checksum_requires_the_exact_installer_name() {
+        let hash = "a".repeat(64);
+        assert_eq!(
+            parse_release_checksum(
+                &format!("{hash}  Mosaic-Setup-0.3.1.exe\n"),
+                "Mosaic-Setup-0.3.1.exe"
+            )
+            .unwrap(),
+            hash
+        );
+        assert!(parse_release_checksum(
+            &format!("{}  another.exe\n", "a".repeat(64)),
+            "Mosaic-Setup-0.3.1.exe"
+        )
+        .is_err());
+    }
+
+    #[test]
+    fn release_assets_must_match_the_exact_tag_and_name() {
+        assert!(validate_github_release_asset_url(
+            "https://github.com/Quill-00/mosaic-desktop-automation/releases/download/v0.3.1/Mosaic-Setup-0.3.1.exe",
+            "v0.3.1",
+            "Mosaic-Setup-0.3.1.exe"
+        )
+        .is_ok());
+        assert!(validate_github_release_asset_url(
+            "https://github.com/Quill-00/mosaic-desktop-automation/releases/download/v0.3.0/Mosaic-Setup-0.3.1.exe",
+            "v0.3.1",
+            "Mosaic-Setup-0.3.1.exe"
+        )
+        .is_err());
     }
 }

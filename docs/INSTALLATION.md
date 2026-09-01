@@ -34,7 +34,7 @@ Do not attach these directories to issues. Share only the smallest manually reda
 
 ## Automatic updates
 
-Mosaic accepts an update only when its version is newer, metadata signature is valid, SHA-256 is complete, and the download URL belongs to this project's GitHub Release path.
+Mosaic checks GitHub's public latest-release API directly and accepts an update only when its version is newer, both named assets belong to this project's GitHub Release path, and the matching `.sha256` file is complete and valid.
 
 The client downloads into a `.partial` file, enforces redirect and size limits, verifies length, Windows PE headers, and SHA-256, then stages the installer atomically. It verifies SHA-256 again on the next launch before starting Inno Setup, before any window, script, bot, or plugin starts.
 

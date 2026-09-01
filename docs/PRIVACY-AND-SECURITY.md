@@ -4,7 +4,7 @@
 
 Mosaic Desktop Automation is MIT-licensed software. Official builds contain no login, membership, subscription, activation code, device binding, or gate copied from another product.
 
-The update client accesses only Mosaic's public version metadata. Requests contain the current version and a fixed public application identifier that cannot access users, orders, subscriptions, or other applications. The client does not call license, login, subscription, or payment endpoints.
+The update client accesses only this repository's public GitHub Releases API and release assets. It does not call Mosaic-owned traffic, license, login, subscription, payment, user, or order services.
 
 ## Local data
 
@@ -18,8 +18,8 @@ Mosaic has no telemetry upload. User tasks can access the network or filesystem 
 
 ## Update trust chain
 
-- Version metadata must be signed by Mosaic's dedicated RSA private key; the client contains only its public key.
-- Installer URLs must belong to this project's GitHub Releases.
+- Version metadata and both named assets come directly from this project's public GitHub Releases.
+- Installer and `.sha256` URLs must belong to this project's GitHub Release path.
 - Downloads use `.partial` files, strict redirect and timeout handling, and a 256 MB limit.
 - Length, PE headers, and SHA-256 are checked before staging.
 - SHA-256 is checked again on the next launch before Inno Setup starts.
