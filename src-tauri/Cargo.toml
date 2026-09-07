@@ -1,6 +1,6 @@
 [package]
 name = "mosaic"
-version = "0.3.2"
+version = "0.3.5"
 description = "Local-first desktop automation dashboard for scripts and plugins"
 authors = ["Mosaic contributors"]
 license = "MIT"
@@ -36,6 +36,7 @@ zip = { version = "2.4", default-features = false, features = ["deflate"] }
 tungstenite = { version = "0.26", features = ["native-tls"] }
 
 [target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_Graphics_Dwm", "Win32_UI_WindowsAndMessaging"] }
 winreg = "0.55"
 

@@ -10,6 +10,44 @@
     "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{2,64}$" },
     "version": { "type": "string", "pattern": "^[A-Za-z0-9._-]{2,64}$" },
     "runtime": { "enum": ["node", "python", "powerShell", "executable"] },
-    "entry": { "type": "string", "minLength": 1, "maxLength": 240 }
+    "entry": { "type": "string", "minLength": 1, "maxLength": 240 },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "summary": { "type": "string", "maxLength": 160 },
+        "drawer": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "title": { "type": "string", "maxLength": 80 },
+            "description": { "type": "string", "maxLength": 320 },
+            "drop": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "prompt": { "type": "string", "maxLength": 120 },
+                "note": { "type": "string", "maxLength": 240 },
+                "extensions": { "type": "array", "maxItems": 32, "items": { "type": "string", "maxLength": 16 } }
+              }
+            },
+            "actions": {
+              "type": "array",
+              "maxItems": 12,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["id", "label"],
+                "properties": {
+                  "id": { "type": "string", "pattern": "^[A-Za-z0-9._-]{1,64}$" },
+                  "label": { "type": "string", "minLength": 1, "maxLength": 80 },
+                  "args": { "type": "array", "maxItems": 16, "items": { "type": "string", "maxLength": 512 } }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   }
 }

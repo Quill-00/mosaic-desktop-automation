@@ -34,6 +34,12 @@ pending-update.json
 *.p12
 secrets.*
 credentials.*
+plugins/**/settings.json
+plugins/**/config.local.*
+plugins/**/auth/
+plugins/**/credentials/
+plugins/**/cookies/
+plugins/**/*token*
 installer/.release.env
 
 # Agent, editor, checkpoint, and conversation history

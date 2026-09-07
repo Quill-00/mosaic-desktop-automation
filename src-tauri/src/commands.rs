@@ -23,6 +23,7 @@ pub struct Snapshot {
     window: WindowConfig,
     community: CommunityConfig,
     update: crate::update::UpdateStatus,
+    plugin_surfaces: HashMap<String, crate::plugin_api::PluginSurface>,
 }
 
 #[derive(Serialize, Clone)]
@@ -146,6 +147,7 @@ pub fn snapshot(state: State<'_, Shared>) -> Snapshot {
         window,
         community: db.community.clone(),
         update: crate::update::status(),
+        plugin_surfaces: crate::plugin_api::surfaces(&db.tasks),
     }
 }
 
@@ -170,6 +172,7 @@ pub fn open_path(app: AppHandle, path: String) -> Result<(), String> {
         .open_path(path, None::<&str>)
         .map_err(|e| e.to_string())
 }
+
 
 #[tauri::command]
 pub fn create_task(state: State<'_, Shared>, app: AppHandle, mut task: Task) -> Task {
@@ -223,6 +226,19 @@ pub fn delete_task(
     {
         return Err("社区安装的项目请在“插件中心”卸载，以便同时清理包文件。".into());
     }
+    let local_plugin_dir = {
+        let db = lk(&state.db);
+        db.tasks.iter().find(|task| task.id == id).and_then(|task| {
+            let cwd = std::path::PathBuf::from(task.cwd.as_deref()?);
+            let root = state.path.parent()?.join("local-plugins");
+            let canonical_root = std::fs::canonicalize(root).ok()?;
+            let canonical_cwd = std::fs::canonicalize(cwd).ok()?;
+            (task.kind == TaskKind::Plugin
+                && canonical_cwd.starts_with(&canonical_root)
+                && canonical_cwd.join("mosaic-plugin.json").is_file())
+                .then_some(canonical_cwd)
+        })
+    };
     runner::terminate(state.inner(), &id);
     clear_last_run(state.inner(), &id);
     {
@@ -237,6 +253,9 @@ pub fn delete_task(
     state.flush();
     let sh = state.inner().clone();
     watcher::restart_all(&sh, &app);
+    if let Some(directory) = local_plugin_dir {
+        let _ = std::fs::remove_dir_all(directory);
+    }
     emit(&app);
     Ok(())
 }
@@ -539,6 +558,42 @@ pub fn inspect_target(path: String) -> Result<EntryGuess, String> {
         let cwd = p.display().to_string();
         let output_dir = detect_output_dir(p);
 
+        let plugin_manifest = p.join("mosaic-plugin.json");
+        if plugin_manifest.is_file() {
+            let bytes = std::fs::read(&plugin_manifest).map_err(|e| e.to_string())?;
+            if bytes.len() > 256 * 1024 {
+                return Err("插件清单过大".into());
+            }
+            let manifest: serde_json::Value = serde_json::from_slice(&bytes)
+                .map_err(|e| format!("插件清单格式无效: {}", e))?;
+            if manifest["schemaVersion"].as_u64() != Some(1) {
+                return Err("不支持的插件清单版本".into());
+            }
+            let entry = manifest["entry"].as_str().ok_or("插件清单缺少 entry")?;
+            let entry_path = p.join(entry);
+            if entry.contains("..") || Path::new(entry).is_absolute() || !entry_path.is_file() {
+                return Err("插件入口必须是插件目录内的现有文件".into());
+            }
+            let file = entry_path.display().to_string();
+            let runtime = manifest["runtime"].as_str().unwrap_or("");
+            let (command, args) = match runtime {
+                "powerShell" => ("powershell.exe".into(), vec!["-NoProfile".into(), "-ExecutionPolicy".into(), "Bypass".into(), "-File".into(), file]),
+                "node" => ("node".into(), vec![file]),
+                "python" => ("python".into(), vec![file]),
+                "executable" => (file, vec![]),
+                _ => return Err("插件清单 runtime 不受支持".into()),
+            };
+            return Ok(EntryGuess {
+                kind: "mosaic-plugin".into(),
+                command,
+                args,
+                cwd,
+                nickname: manifest["name"].as_str().unwrap_or(&name).to_string(),
+                note: "Mosaic 标准插件清单".into(),
+                output_dir,
+            });
+        }
+
         // A hand-written launcher (start.ps1 / run.bat / fetch.ps1) is the author's
         // intended entry — prefer it over language auto-detection.
         if let Some((command, args, note)) = find_script_entry(p, true) {
@@ -694,6 +749,59 @@ fn scripts_dir(state: &Shared) -> std::path::PathBuf {
         .unwrap_or_else(|| std::path::PathBuf::from("scripts"))
 }
 
+fn local_plugins_dir(state: &Shared) -> std::path::PathBuf {
+    state
+        .path
+        .parent()
+        .map(|path| path.join("local-plugins"))
+        .unwrap_or_else(|| std::path::PathBuf::from("local-plugins"))
+}
+
+fn copy_plugin_project(source: &std::path::Path, destination: &std::path::Path) -> Result<(), String> {
+    fn copy_dir(source: &std::path::Path, destination: &std::path::Path, depth: usize, files: &mut usize, bytes: &mut u64) -> Result<(), String> {
+        if depth > 16 || *files > 20_000 || *bytes > 1024 * 1024 * 1024 {
+            return Err("插件项目超过导入限制".into());
+        }
+        std::fs::create_dir_all(destination).map_err(|e| e.to_string())?;
+        for entry in std::fs::read_dir(source).map_err(|e| e.to_string())? {
+            let entry = entry.map_err(|e| e.to_string())?;
+            let kind = entry.file_type().map_err(|e| e.to_string())?;
+            if kind.is_symlink() { continue; }
+            let name = entry.file_name().to_string_lossy().to_string();
+            let lower = name.to_ascii_lowercase();
+            if [".git", "node_modules", "target", "logs", "auth", "credentials", "cookies"].contains(&lower.as_str())
+                || lower == ".env" || lower.starts_with(".env.") || lower.contains("token")
+                || lower == "settings.json" || lower.starts_with("config.local.") {
+                continue;
+            }
+            let target = destination.join(&name);
+            if kind.is_dir() {
+                copy_dir(&entry.path(), &target, depth + 1, files, bytes)?;
+            } else if kind.is_file() {
+                let size = entry.metadata().map_err(|e| e.to_string())?.len();
+                *files += 1;
+                *bytes += size;
+                if *files > 20_000 || *bytes > 1024 * 1024 * 1024 {
+                    return Err("插件项目超过导入限制".into());
+                }
+                std::fs::copy(entry.path(), target).map_err(|e| e.to_string())?;
+            }
+        }
+        Ok(())
+    }
+
+    if destination.exists() {
+        return Err("同标识插件已经安装；请先移除旧版本".into());
+    }
+    let mut files = 0;
+    let mut bytes = 0;
+    if let Err(error) = copy_dir(source, destination, 0, &mut files, &mut bytes) {
+        let _ = std::fs::remove_dir_all(destination);
+        return Err(error);
+    }
+    Ok(())
+}
+
 /// English-safe folder name from a script name (avoids CJK paths some tools choke on).
 fn slugify(name: &str) -> String {
     let mut s: String = name
@@ -725,6 +833,18 @@ fn slugify(name: &str) -> String {
 pub fn import_local(state: State<'_, Shared>, path: String) -> Result<EntryGuess, String> {
     let guess = inspect_target(path.clone())?;
     let p = std::path::Path::new(&path);
+    if p.is_dir() && guess.kind == "mosaic-plugin" {
+        let manifest: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(p.join("mosaic-plugin.json")).map_err(|e| e.to_string())?,
+        ).map_err(|e| e.to_string())?;
+        let id = manifest["id"].as_str().ok_or("插件清单缺少 id")?;
+        if id.len() < 2 || id.len() > 64 || !id.bytes().all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'_' | b'-')) {
+            return Err("插件 id 只能包含英文字母、数字、点、下划线和连字符".into());
+        }
+        let destination = local_plugins_dir(state.inner()).join(id);
+        copy_plugin_project(p, &destination)?;
+        return inspect_target(destination.display().to_string());
+    }
     if p.is_file() {
         let slug = slugify(&guess.nickname);
         let dir = scripts_dir(state.inner()).join(&slug);

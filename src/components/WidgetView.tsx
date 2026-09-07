@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalPosition } from "@tauri-apps/api/window";
-import { Boxes, ChevronRight, ExternalLink, Play, Power, Puzzle } from "lucide-react";
+import { Boxes, ChevronDown, ChevronRight, ExternalLink, Play, Power, Puzzle } from "lucide-react";
 import { api, useSnapshot } from "../api";
 import type { Task } from "../types";
 import { useI18n } from "../i18n";
 import type { Locale } from "../i18n";
+import CpaQuota from "./CpaQuota";
+import PromptCleanerWorkbench from "./PromptCleanerWorkbench";
+import ImageMetadataCleanerWorkbench from "./ImageMetadataCleanerWorkbench";
 
 function scriptStatus(task: Task, running: boolean, locale: Locale, headline?: string): string {
   if (running) return locale === "zh-CN" ? "正在运行" : "Running";
@@ -17,6 +20,11 @@ export default function WidgetView() {
   const { locale, t } = useI18n();
   const { snap, error, refresh } = useSnapshot();
   const [expanded, setExpanded] = useState(false);
+  const [quotaOpen, setQuotaOpen] = useState(false);
+  const [pluginDrawerOpen, setPluginDrawerOpen] = useState<string | null>(null);
+  const [pluginDropActive, setPluginDropActive] = useState(false);
+  const [pluginMessage, setPluginMessage] = useState("");
+  const pluginDrawerRef = useRef<string | null>(null);
   const [switching, setSwitching] = useState<string | null>(null);
   const collapseTimer = useRef<number | null>(null);
   const collapseGuard = useRef(0);
@@ -37,6 +45,37 @@ export default function WidgetView() {
       if (dragFrame.current !== null) window.cancelAnimationFrame(dragFrame.current);
       delete document.documentElement.dataset.surface;
     };
+  }, []);
+
+  useEffect(() => {
+    pluginDrawerRef.current = pluginDrawerOpen && snap?.pluginSurfaces?.[pluginDrawerOpen]?.drawer?.drop
+      ? pluginDrawerOpen
+      : null;
+  }, [pluginDrawerOpen, snap?.pluginSurfaces]);
+
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    getCurrentWindow().onDragDropEvent((event) => {
+      const pluginId = pluginDrawerRef.current;
+      if (!pluginId) return;
+      if (event.payload.type === "enter" || event.payload.type === "over") {
+        setPluginDropActive(true);
+        return;
+      }
+      if (event.payload.type === "leave") {
+        setPluginDropActive(false);
+        return;
+      }
+      if (event.payload.type === "drop") {
+        setPluginDropActive(false);
+        const paths = event.payload.paths;
+        setPluginMessage(`已接收 ${paths.length} 个路径，正在处理`);
+        void api.runPluginWithFiles(pluginId, paths)
+          .then(() => setPluginMessage("处理已开始，可在运行记录查看结果"))
+          .catch((error) => setPluginMessage(String(error)));
+      }
+    }).then((fn) => { unlisten = fn; });
+    return () => unlisten?.();
   }, []);
 
   const runningIds = new Set(snap?.running.map((process) => process.taskId) ?? []);
@@ -63,15 +102,25 @@ export default function WidgetView() {
     if (collapseTimer.current) window.clearTimeout(collapseTimer.current);
     collapseTimer.current = null;
     setExpanded(false);
+    setQuotaOpen(false);
+    setPluginDrawerOpen(null);
     void invoke("set_widget_expanded", { expanded: false });
   }
 
   function scheduleCollapse() {
+    if (pluginDrawerOpen) return;
     if (dragging.current) return;
     if (collapseTimer.current) window.clearTimeout(collapseTimer.current);
     const remaining = collapseGuard.current - Date.now();
     collapseTimer.current = window.setTimeout(collapse, Math.max(500, remaining));
   }
+
+  useEffect(() => {
+    if (pluginDrawerOpen && collapseTimer.current) {
+      window.clearTimeout(collapseTimer.current);
+      collapseTimer.current = null;
+    }
+  }, [pluginDrawerOpen]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -82,7 +131,7 @@ export default function WidgetView() {
     };
     window.addEventListener("blur", onBlur);
     return () => window.removeEventListener("blur", onBlur);
-  }, [expanded]);
+  }, [expanded, pluginDrawerOpen]);
 
   async function startDragging(event: React.PointerEvent<HTMLElement>) {
     if (event.button !== 0 || (event.target as HTMLElement).closest("button")) return;
@@ -236,17 +285,27 @@ export default function WidgetView() {
         {plugins.length > 0 && <div className="widget-section"><p>{t("Plugins", "插件")}</p></div>}
         {plugins.map((plugin) => {
           const running = runningIds.has(plugin.id);
+          const surface = snap?.pluginSurfaces?.[plugin.id];
+          const drawer = surface?.drawer;
+          const drawerOpen = pluginDrawerOpen === plugin.id;
           return (
-            <div className={"widget-row" + (running ? " on" : "")} key={plugin.id}>
+            <div key={plugin.id}>
+            <div className={"widget-row" + (running ? " on" : "")}>
               <div className="widget-tile"><Puzzle /></div>
-              <div className="widget-label">
+              {plugin.id === "plugin-cliproxyapi" ? <button className="widget-label cpa-widget-trigger" onClick={() => setQuotaOpen(!quotaOpen)} aria-expanded={quotaOpen} aria-controls="widget-cpa-quota">
+                <strong>{plugin.nickname} <ChevronDown size={13} className={quotaOpen ? "is-open" : ""} /></strong>
+                <span>{t("Usage & reset times", "用量与重置时间")} · {running ? t("Running", "运行中") : t("Off", "已关闭")}</span>
+              </button> : drawer ? <button className="widget-label cpa-widget-trigger" onClick={() => { setPluginDrawerOpen(drawerOpen ? null : plugin.id); setPluginMessage(""); }} aria-expanded={drawerOpen} aria-controls={`plugin-drawer-${plugin.id}`}>
+                <strong>{plugin.nickname} <ChevronDown size={13} className={drawerOpen ? "is-open" : ""} /></strong>
+                <span>{plugin.id === "plugin-prompt-cleaner" ? t("Click to expand", "点击展开") : surface?.summary || drawer.description}</span>
+              </button> : <div className="widget-label">
                 <strong title={plugin.nickname}>{plugin.nickname}</strong>
                 <span>
                   <i className={running ? "status-dot online" : "status-dot unknown"} />
                   {running ? t("Running", "运行中") : plugin.enabled ? t("Starting", "正在启动") : t("Off", "已关闭")}
                 </span>
-              </div>
-              <button
+              </div>}
+              {plugin.lifecycle === "resident" && <button
                 className={running ? "widget-button on" : "widget-button"}
                 onClick={() => void togglePlugin(plugin)}
                 disabled={switching === plugin.id}
@@ -254,7 +313,25 @@ export default function WidgetView() {
                 title={plugin.enabled ? t("Stop the entire process tree", "关闭并终止整个进程树") : t("Start silently", "静默启动")}
               >
                 <Power />
-              </button>
+              </button>}
+            </div>
+            {plugin.id === "plugin-cliproxyapi" && quotaOpen && <div id="widget-cpa-quota"><CpaQuota /></div>}
+            {drawer && drawerOpen && <div id={`plugin-drawer-${plugin.id}`} className="plugin-drawer" onPointerDown={(event) => event.stopPropagation()}>
+              <div className="plugin-drawer-copy">
+                <strong>{drawer.title || plugin.nickname}</strong>
+                {drawer.description && <span>{drawer.description}</span>}
+              </div>
+              {drawer.drop && <div className={"plugin-drop" + (pluginDropActive ? " active" : "")}>
+                <strong>{drawer.drop.prompt || t("Drop files here", "把文件拖到这里")}</strong>
+                <span>{pluginMessage || drawer.drop.note}</span>
+                {drawer.drop.extensions.length > 0 && <small>{drawer.drop.extensions.join(" · ")}</small>}
+              </div>}
+              {plugin.id === "plugin-prompt-cleaner" && <PromptCleanerWorkbench compact />}
+              {plugin.id === "plugin-image-metadata-cleaner" && <ImageMetadataCleanerWorkbench compact />}
+              {drawer.actions.length > 0 && <div className="plugin-actions">
+                {drawer.actions.map((action) => <button key={action.id} onClick={() => void api.runPluginAction(plugin.id, action.id)}>{action.label}</button>)}
+              </div>}
+            </div>}
             </div>
           );
         })}

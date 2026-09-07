@@ -255,6 +255,36 @@ export interface Snapshot {
   window: WindowConfig;
   community: CommunityConfig;
   update: UpdateStatus;
+  pluginSurfaces: Record<string, PluginSurface>;
+}
+
+export interface PluginSurface {
+  summary: string;
+  drawer?: {
+    title: string;
+    description: string;
+    drop?: { prompt: string; note: string; extensions: string[] };
+    actions: { id: string; label: string; args: string[] }[];
+  } | null;
+}
+
+export interface PromptCleanerRule {
+  ruleType: "delete" | "replace";
+  find: string;
+  replace: string;
+  ignoreCase: boolean;
+}
+
+export interface PromptCleanerConfig {
+  root: string;
+  recursive: boolean;
+  rules: PromptCleanerRule[];
+}
+
+export interface PromptCleanerResult {
+  scanned: number;
+  changed: number;
+  matchedRules: number;
 }
 
 export interface ChannelInfo {

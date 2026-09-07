@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "plugin-image-metadata-cleaner",
+  "name": "Image Metadata Cleaner",
+  "runtime": "powerShell",
+  "entry": "image-metadata-cleaner.ps1",
+  "kind": "plugin",
+  "lifecycle": "ephemeral",
+  "ui": {
+    "summary": "拖入多图，设置后统一清洗",
+    "drawer": {
+      "title": "图片元数据清洗",
+      "description": "直接在当前面板拖入多张图片，设置副本保存方式后点击开始清洗。",
+      "actions": []
+    }
+  }
+}

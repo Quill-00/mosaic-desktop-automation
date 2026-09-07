@@ -32,3 +32,26 @@ pub fn save(path: &Path, db: &Db) {
 pub fn db_path(data_dir: &Path) -> PathBuf {
     data_dir.join("db.json")
 }
+
+pub fn cleanup_backups(dir: &Path, keep: usize) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return; };
+    let mut backups = entries
+        .flatten()
+        .filter_map(|entry| {
+            let path = entry.path();
+            if !path.is_file() { return None; }
+            let name = path.file_name()?.to_string_lossy().to_ascii_lowercase();
+            let backup = name.contains("backup")
+                || name.contains("checkpoint")
+                || name.contains(".pre-")
+                || name.contains("running-old");
+            if !backup { return None; }
+            let modified = entry.metadata().ok()?.modified().ok()?;
+            Some((modified, path))
+        })
+        .collect::<Vec<_>>();
+    backups.sort_by(|left, right| right.0.cmp(&left.0));
+    for (_, path) in backups.into_iter().skip(keep) {
+        let _ = std::fs::remove_file(path);
+    }
+}

@@ -2,10 +2,13 @@ mod autostart;
 mod channels;
 mod commands;
 mod community;
+mod cpa;
 mod locale;
 mod model;
 mod network;
 mod popo;
+mod plugin_api;
+mod prompt_cleaner;
 mod runner;
 mod scanner;
 mod scheduler;
@@ -44,6 +47,12 @@ pub fn run() {
                 .app_data_dir()
                 .unwrap_or_else(|_| std::path::PathBuf::from("."));
             std::fs::create_dir_all(&data_dir).ok();
+            store::cleanup_backups(&data_dir, 5);
+            if let Ok(executable) = std::env::current_exe() {
+                if let Some(directory) = executable.parent() {
+                    store::cleanup_backups(directory, 5);
+                }
+            }
             let path = store::db_path(&data_dir);
 
             let mut db = store::load(&path);
@@ -119,6 +128,11 @@ pub fn run() {
                 db.migrated_v7 = true;
             }
             seed::repair_builtin_plugin_locations(&mut db.tasks, &data_dir);
+            for plugin in seed::take_local_plugin_registrations(&data_dir) {
+                if !db.tasks.iter().any(|task| task.id == plugin.id) {
+                    db.tasks.push(plugin);
+                }
+            }
 
             let inner = Arc::new(Inner::new(db, path));
             app.manage(inner.clone());
@@ -172,15 +186,43 @@ pub fn run() {
             if state::lk(&inner.db).window.widget {
                 let _ = ensure_widget(&app.handle().clone(), true);
             }
+            {
+                let handle = app.handle().clone();
+                std::thread::spawn(move || loop {
+                    std::thread::sleep(Duration::from_secs(2));
+                    let configured = ENGINE
+                        .get()
+                        .map(|engine| state::lk(&engine.db).window.widget)
+                        .unwrap_or(false);
+                    if !configured {
+                        continue;
+                    }
+                    if handle.get_webview_window("widget").is_none() {
+                        let _ = ensure_widget(&handle, true);
+                    } else if let Some(widget) = handle.get_webview_window("widget") {
+                        if !widget.is_visible().unwrap_or(false) {
+                            let _ = widget.show();
+                        }
+                        let _ = widget.set_always_on_top(true);
+                    }
+                });
+            }
 
             build_tray(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             commands::snapshot,
+            cpa::cpa_config,
+            cpa::save_cpa_config,
+            cpa::disconnect_cpa,
+            cpa::cpa_quota,
             commands::set_locale,
             commands::exec_items,
             commands::open_path,
+            plugin_api::run_plugin_with_files,
+            plugin_api::run_image_metadata_cleaner,
+            plugin_api::run_plugin_action,
             commands::create_task,
             commands::delete_task,
             commands::set_active,
@@ -212,6 +254,9 @@ pub fn run() {
             community::community_catalog,
             community::install_community_package,
             community::uninstall_community_package,
+            prompt_cleaner::prompt_cleaner_load,
+            prompt_cleaner::prompt_cleaner_save,
+            prompt_cleaner::prompt_cleaner_run,
             update::check_for_updates,
             set_widget_expanded,
             snap_widget_to_edge,
@@ -227,6 +272,16 @@ pub fn run() {
                     if to_tray {
                         api.prevent_close();
                         let _ = window.hide();
+                    }
+                } else if window.label() == "widget" {
+                    let keep_visible = ENGINE
+                        .get()
+                        .map(|engine| state::lk(&engine.db).window.widget)
+                        .unwrap_or(false);
+                    if keep_visible {
+                        api.prevent_close();
+                        let _ = window.show();
+                        let _ = window.set_always_on_top(true);
                     }
                 }
             }

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "id": "plugin-prompt-cleaner",
+  "name": "Training Prompt Cleaner",
+  "runtime": "powerShell",
+  "entry": "prompt-cleaner.ps1",
+  "kind": "plugin",
+  "lifecycle": "ephemeral",
+  "ui": {
+    "summary": "",
+    "drawer": {
+      "title": "提示词清洗工作台",
+      "description": "在 Mosaic 工作中心直接维护删除与覆盖规则，递归处理指定根目录中的全部 TXT 文件。",
+      "actions": []
+    }
+  }
+}

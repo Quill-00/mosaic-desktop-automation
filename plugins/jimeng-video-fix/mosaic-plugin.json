@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "plugin-jimeng-video-fix",
+  "name": "Jimeng Video Fix",
+  "runtime": "powerShell",
+  "entry": "jimeng-video-fix.ps1",
+  "kind": "plugin",
+  "lifecycle": "ephemeral",
+  "ui": {
+    "summary": "拖入即修复 · 输出到源文件旁",
+    "drawer": {
+      "title": "视频拖放修复",
+      "description": "拖入一个或多个视频，插件会自动按顺序处理。",
+      "drop": {
+        "prompt": "把视频拖到这里",
+        "note": "恒定 24 FPS，去元数据，不裁剪画面或时长",
+        "extensions": [".mp4", ".mov", ".m4v", ".mkv", ".webm"]
+      },
+      "actions": []
+    }
+  }
+}

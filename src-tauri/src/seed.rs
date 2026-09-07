@@ -229,6 +229,47 @@ pub fn builtin_plugins_v3(data_dir: &std::path::Path) -> Vec<Task> {
     }]
 }
 
+pub fn take_local_plugin_registrations(data_dir: &std::path::Path) -> Vec<Task> {
+    let root = data_dir.join("local-plugins");
+    let Ok(entries) = std::fs::read_dir(root) else { return Vec::new(); };
+    entries
+        .flatten()
+        .filter_map(|entry| {
+            let plugin_dir = entry.path();
+            let marker = plugin_dir.join(".register-on-next-start");
+            let manifest_path = plugin_dir.join("mosaic-plugin.json");
+            if !marker.is_file() || !manifest_path.is_file() { return None; }
+            let manifest: serde_json::Value = serde_json::from_slice(&std::fs::read(manifest_path).ok()?).ok()?;
+            if manifest["schemaVersion"].as_u64() != Some(1) { return None; }
+            let id = manifest["id"].as_str()?.to_string();
+            let nickname = manifest["name"].as_str()?.to_string();
+            let entry = manifest["entry"].as_str()?;
+            if entry.contains("..") || std::path::Path::new(entry).is_absolute() { return None; }
+            let entry_path = plugin_dir.join(entry);
+            if !entry_path.is_file() { return None; }
+            let file = entry_path.to_string_lossy().into_owned();
+            let (command, args) = match manifest["runtime"].as_str()? {
+                "powerShell" => (if cfg!(windows) { "powershell.exe" } else { "pwsh" }.into(), vec!["-NoProfile".into(), "-ExecutionPolicy".into(), "Bypass".into(), "-File".into(), file]),
+                "node" => ("node".into(), vec![file]),
+                "python" => ("python".into(), vec![file]),
+                "executable" => (file, Vec::new()),
+                _ => return None,
+            };
+            let lifecycle = if manifest["lifecycle"].as_str() == Some("resident") { Lifecycle::Resident } else { Lifecycle::Ephemeral };
+            let _ = std::fs::remove_file(marker);
+            Some(Task {
+                id, nickname, command, kind: TaskKind::Plugin, args,
+                cwd: Some(plugin_dir.to_string_lossy().into_owned()),
+                trigger: Trigger::Manual, display: DisplayForm::Card, lifecycle,
+                active: true, enabled: false, timeout_secs: 0, push_channel: None,
+                on_dashboard: false, order: 0, col_span: 1, row_span: 1,
+                output_dir: None, stdin: None, community: None,
+                created_at: Local::now().to_rfc3339(),
+            })
+        })
+        .collect()
+}
+
 /// Identifies the original fabricated demo tasks so the migration can remove them.
 pub fn is_legacy_mock(t: &Task) -> bool {
     matches!(t.nickname.as_str(), "系统快照" | "示例新闻" | "每日提示")

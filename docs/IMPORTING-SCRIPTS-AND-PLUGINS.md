@@ -68,6 +68,22 @@ Fresh installs include a disabled `CLIProxyAPI` resident-plugin entry and a pinn
 
 Mosaic does **not** import or inspect global CPA/Scoop configuration, OAuth files, cookies, accounts, or tokens. On first use it copies a credential-free template to `%APPDATA%\com.mosaic.desktop\cliproxyapi\config.yaml`, creates an adjacent private `auth` directory, and always starts the bundled CPA with an explicit `--config` path. If that Mosaic-local config already exists, upgrades never overwrite it. Development builds may use `CLIPROXYAPI_PATH` or Scoop only when no packaged resources exist; release builds never fall back to a global installation.
 
+## CPA quota plugin (Mosaic 0.3.3)
+
+The built-in CLIProxyAPI entry now includes a quota inspector. Open **Settings → CPA quota plugin**, enter the CPA base URL and **management key** (not an inference API key), then choose **Test & save**. The connection can also be configured directly inside the widget's quota panel. CPA management must already be enabled. Mosaic does not change CPA configuration or import credentials from a global installation.
+
+In the desktop widget, click **CLIProxyAPI** to expand usage and reset details; they are collapsed initially and fold again when the widget closes. The separate power button still controls the local CPA process. A remote CPA connection can be inspected while the bundled local process is off.
+
+- **Codex:** shared usage windows, code review and additional named/model windows returned by CPA. `used_percent` is treated as a percentage, including values below 1. Missing values remain unknown.
+- **Antigravity:** model-group buckets and their reset timestamps; older `models.*.quotaInfo` responses are also accepted. Project identifiers come from account metadata or the read-only `loadCodeAssist` response; OAuth auth files are never downloaded.
+- **Grok / xAI:** shared CLI credits and the monthly spending-cap balance. The billing rollover is labeled separately from quota reset. Product spending shares are not misrepresented as independent model limits. If a paid account does not expose billing data, it shows an explicit unavailable state; no paid chat request is sent as a fallback.
+
+The panel shows local absolute reset times, countdowns, account errors, partial results and cached-data warnings. Reset deadlines do not automatically turn a cached zero balance into 100%. Open panels refresh every two minutes, with four concurrent account probes, request timeouts and a bounded batch window. Manual refresh is rate-limited to once per 15 seconds; very large pools can show unqueried accounts after the batch budget expires.
+
+The management key and destination are stored together in the Windows credential store, never in `db.json`, task arguments or frontend storage. Changing the destination requires a new key. Disconnect removes this connection and its in-memory quota cache without modifying CPA accounts. Remote management connections require HTTPS and use Mosaic's local download proxy; localhost HTTP is supported. Provider requests originate at CPA, so configure CPA's own outbound proxy separately.
+
+Protocol references inspected on 2026-09-03: [CPA Control Center](https://github.com/Biliniko/cpa-control-center), and the [CLIProxyAPI Management Center quota adapters](https://github.com/router-for-me/Cli-Proxy-API-Management-Center/tree/main/src/features/quota/providers). Integration uses `GET /v0/management/auth-files` and fixed provider quota requests through `POST /v0/management/api-call`. These provider APIs can change; unavailable data is reported explicitly.
+
 ## Community packages
 
 Each ZIP must contain `mosaic-package.json` at its root:
@@ -83,6 +99,12 @@ Each ZIP must contain `mosaic-package.json` at its root:
 ```
 
 Supported runtimes are `node`, `python`, `powerShell`, and `executable`. Mosaic verifies the registry, same-origin package URL, SHA-256, manifest, paths, and size. Installed tasks remain disabled. See [the community registry guide](../community/README.md).
+
+## Standard plugin surface
+
+A plugin directory can include `mosaic-plugin.json`. Importing that directory detects the entry point without requiring users to edit command lines. The optional `ui` object declares a quick-widget drawer, accepted drop extensions, and action-menu arguments. Mosaic renders these capabilities generically; plugin-specific parameters and state remain in the plugin directory rather than Mosaic settings.
+
+Use `schemaVersion: 1`, a stable `id`, `name`, `runtime`, `entry`, `kind: "plugin"`, and `lifecycle`. A drop-capable drawer declares `ui.drawer.drop.extensions`; dropped paths are appended to the plugin entry arguments. Drawer actions declare fixed argument arrays and are launched through the same audited task runner.
 
 ## Security reminder
 

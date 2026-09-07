@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { currentMonitor, getCurrentWindow, PhysicalPosition } from "@tauri-apps/api/window";
-import { Activity, AlertCircle, Bell, Blocks, LayoutGrid, ListChecks, Plus, RefreshCw, Settings, ShieldAlert, X } from "lucide-react";
+import { Activity, AlertCircle, Bell, Blocks, LayoutGrid, ListChecks, Plus, RefreshCw, Settings, ShieldAlert, Wrench, X } from "lucide-react";
 import { errorMessage, useSnapshot } from "./api";
 import { useI18n } from "./i18n";
 import Dashboard from "./components/Dashboard";
@@ -11,9 +11,10 @@ import NotificationsView from "./components/Notifications";
 import SettingsView from "./components/Settings";
 import CommunityCenter from "./components/CommunityCenter";
 import WidgetView from "./components/WidgetView";
+import PluginWorkCenter from "./components/PluginWorkCenter";
 import "./styles.css";
 
-type View = "dashboard" | "tasks" | "community" | "running" | "notifications" | "settings";
+type View = "dashboard" | "workcenter" | "tasks" | "community" | "running" | "notifications" | "settings";
 
 const IS_WIDGET = (() => {
   try {
@@ -143,6 +144,7 @@ export default function App() {
         <div className="sidebar-divider" />
         <nav>
           <NavBtn icon={<LayoutGrid size={17} />} label={t("Dashboard", "仪表盘")} active={view === "dashboard"} onClick={() => setView("dashboard")} />
+          <NavBtn icon={<Wrench size={17} />} label={t("Work center", "工作中心")} active={view === "workcenter"} onClick={() => setView("workcenter")} />
           <NavBtn icon={<ListChecks size={17} />} label={t("Scripts & plugins", "脚本与插件")} active={view === "tasks"} onClick={() => setView("tasks")} />
           <NavBtn icon={<Blocks size={17} />} label={t("Community", "插件中心")} active={view === "community"} onClick={() => setView("community")} />
           <NavBtn icon={<Activity size={17} />} label={t("Running", "正在运行")} badge={running || undefined} active={view === "running"} onClick={() => setView("running")} />
@@ -182,6 +184,7 @@ export default function App() {
           </div>
         )}
         {snap && view === "dashboard" && <Dashboard snap={snap} onNavigate={(v) => setView(v as View)} />}
+        {snap && view === "workcenter" && <PluginWorkCenter snap={snap} />}
         {snap && view === "tasks" && <Tasks snap={snap} autoNew={autoNew} onAutoNew={() => setAutoNew(false)} />}
         {snap && view === "community" && <CommunityCenter snap={snap} />}
         {snap && view === "running" && <Running snap={snap} />}

@@ -104,6 +104,7 @@ export default function Tasks({
   const [warnHidden, setWarnHidden] = useState(() => localStorage.getItem("mosaic.warnDismissed") === "1");
   const [query, setQuery] = useState("");
   const [inactiveOpen, setInactiveOpen] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   function startNew() {
     setForm(emptyTask());
@@ -113,6 +114,7 @@ export default function Tasks({
     setFormError("");
     setImportPath("");
     setImportMsg("");
+    setAdvancedOpen(false);
   }
 
   // Opens the new-task form whenever the sidebar "新建任务" button flips autoNew —
@@ -133,6 +135,7 @@ export default function Tasks({
     setFormError("");
     setImportPath("");
     setImportMsg("");
+    setAdvancedOpen(false);
   }
 
   async function doImport() {
@@ -143,6 +146,7 @@ export default function Tasks({
       const g = await api.importLocal(importPath.trim());
       setForm({
         ...form,
+        ...(g.kind === "mosaic-plugin" ? { kind: "plugin" as const, lifecycle: "ephemeral" as const, trigger: { kind: "manual" as const }, enabled: false, timeoutSecs: 0, onDashboard: false } : {}),
         command: g.command,
         args: g.args,
         cwd: g.cwd,
@@ -242,67 +246,37 @@ export default function Tasks({
 
   const taskRow = (t: Task, shelved = false) => {
     const running = snap.running.some((process) => process.taskId === t.id);
+    const switchable = t.kind !== "plugin" || t.lifecycle === "resident";
     return (
       <div key={t.id} className={"row task-row" + (running ? " is-running" : "") + (shelved ? " is-shelved" : "")}>
         <div className="row-main">
-          {!shelved && (
-            <label className="switch" title={t.enabled ? tr(t.kind === "plugin" ? "Turn off and stop the plugin" : "Turn off execution", `关闭运行开关${t.kind === "plugin" ? "并终止插件" : ""}`) : tr(t.kind === "plugin" ? "Turn on and start the plugin" : "Turn on execution", `打开运行开关${t.kind === "plugin" ? "并启动插件" : ""}`)}>
-              <input
-                aria-label={tr(`${t.enabled ? "Turn off" : "Turn on"} ${t.nickname}`, `${t.enabled ? "关闭" : "打开"}${t.nickname}运行开关`)}
-                type="checkbox"
-                checked={t.enabled}
-                onChange={(event) => api.setEnabled(t.id, event.target.checked)}
-              />
-              <span />
-            </label>
-          )}
-          <span className={"dot " + (running ? "ok" : t.enabled ? "info" : "idle")} />
-          <span className="row-name">{t.nickname}</span>
-          <span className="tag">{t.kind === "plugin" ? tr("Plugin", "插件") : shelved ? tr("Script", "脚本") : triggerLabel(t.trigger, locale)}</span>
-          {t.community && <span className="tag community-tag">{tr("Community", "社区")} · {t.community.author}</span>}
-          {shelved && <span className="tag">{tr("Disabled", "未启用")}</span>}
-          {!shelved && t.kind === "plugin" && <span className={"tag" + (running ? " success" : "")}>{running ? tr("Running", "运行中") : t.enabled ? tr("Starting", "启动中") : tr("Execution off", "运行开关已关")}</span>}
-          {!shelved && t.kind !== "plugin" && t.lifecycle === "resident" && <span className="tag">{tr("Keep running", "保持运行")}</span>}
-          {shelved ? (
-            <button className="btn small" onClick={() => api.setActive(t.id, true)} title={tr("Enable in workspace", "启用到工作区")}>
-              <Power size={13} /> {tr("Enable", "启用")}
-            </button>
-          ) : (
-            <button className="btn small" onClick={() => api.setActive(t.id, false)} title={tr("Move to the disabled shelf", "移到未启用收纳区")}>
-              <Archive size={13} /> {tr("Shelve", "收纳")}
-            </button>
-          )}
-          <button
-            className="btn small"
-            onClick={() => startEdit(t)}
-            disabled={Boolean(t.community)}
-            aria-label={tr(`Edit ${t.nickname}`, `编辑${t.nickname}`)}
-            title={t.community ? tr("Community package entry points are managed by the registry", "社区包的入口由注册表管理") : tr("Edit task", "编辑任务")}
-          >
-            <Pencil size={13} />
-          </button>
-          {!shelved && t.kind !== "plugin" && (
-            <button className="btn small" onClick={() => api.runNow(t.id)} disabled={running || !t.enabled} title={!t.enabled ? tr("Turn on execution first", "先打开运行开关") : tr("Run now", "立即运行")}>
-              <Play size={13} /> {running ? tr("Running", "运行中") : tr("Run", "运行")}
-            </button>
-          )}
-          <button
-            className="btn small danger"
-            disabled={Boolean(t.community)}
-            aria-label={tr(`Delete ${t.nickname}`, `删除${t.nickname}`)}
-            title={t.community ? tr("Uninstall community packages from the Community view", "请在插件中心卸载并清理包文件") : tr("Delete task", "删除任务")}
-            onClick={() => {
-              setDeleteTarget(t);
-              setDeleteProducts(false);
-              setDeleteError("");
-            }}
-          >
-            <Trash2 size={13} />
-          </button>
+          <div className="task-identity">
+            <span className="task-switch-slot">{!shelved && switchable && (
+              <label className="switch" title={t.enabled ? tr(t.kind === "plugin" ? "Turn off and stop the plugin" : "Turn off execution", `关闭运行开关${t.kind === "plugin" ? "并终止插件" : ""}`) : tr(t.kind === "plugin" ? "Turn on and start the plugin" : "Turn on execution", `打开运行开关${t.kind === "plugin" ? "并启动插件" : ""}`)}>
+                <input aria-label={tr(`${t.enabled ? "Turn off" : "Turn on"} ${t.nickname}`, `${t.enabled ? "关闭" : "打开"}${t.nickname}运行开关`)} type="checkbox" checked={t.enabled} onChange={(event) => api.setEnabled(t.id, event.target.checked)} />
+                <span />
+              </label>
+            )}</span>
+            <span className={"dot " + (running ? "ok" : t.enabled ? "info" : "idle")} />
+            <span className="row-name" title={t.nickname}>{t.nickname}</span>
+          </div>
+          <div className="task-statuses">
+            <span className="tag">{t.kind === "plugin" ? tr("Plugin", "插件") : shelved ? tr("Script", "脚本") : triggerLabel(t.trigger, locale)}</span>
+            {t.community && <span className="tag community-tag">{tr("Community", "社区")} · {t.community.author}</span>}
+            {shelved && <span className="tag">{tr("Disabled", "未启用")}</span>}
+            {!shelved && t.kind === "plugin" && <span className={"tag" + (running ? " success" : "")}>{running ? tr("Running", "运行中") : t.lifecycle === "ephemeral" ? tr("Workbench ready", "工作中心就绪") : t.enabled ? tr("Starting", "启动中") : tr("Execution off", "运行开关已关")}</span>}
+            {!shelved && t.kind !== "plugin" && t.lifecycle === "resident" && <span className="tag">{tr("Keep running", "保持运行")}</span>}
+          </div>
+          <div className="task-actions">
+            {shelved ? <button className="btn small" onClick={() => api.setActive(t.id, true)} title={tr("Enable in workspace", "启用到工作区")}><Power size={13} /> {tr("Enable", "启用")}</button>
+              : <button className="btn small" onClick={() => api.setActive(t.id, false)} title={tr("Move to the disabled shelf", "移到未启用收纳区")}><Archive size={13} /> {tr("Shelve", "收纳")}</button>}
+            <button className="btn small task-icon-action" onClick={() => startEdit(t)} disabled={Boolean(t.community)} aria-label={tr(`Edit ${t.nickname}`, `编辑${t.nickname}`)} title={t.community ? tr("Community package entry points are managed by the registry", "社区包的入口由注册表管理") : tr("Edit task", "编辑任务")}><Pencil size={13} /></button>
+            {!shelved && t.kind !== "plugin" ? <button className="btn small" onClick={() => api.runNow(t.id)} disabled={running || !t.enabled} title={!t.enabled ? tr("Turn on execution first", "先打开运行开关") : tr("Run now", "立即运行")}><Play size={13} /> {running ? tr("Running", "运行中") : tr("Run", "运行")}</button> : <span className="task-action-spacer" />}
+            <button className="btn small danger task-icon-action" disabled={Boolean(t.community)} aria-label={tr(`Delete ${t.nickname}`, `删除${t.nickname}`)} title={t.community ? tr("Uninstall community packages from the Community view", "请在插件中心卸载并清理包文件") : tr("Delete task", "删除任务")} onClick={() => { setDeleteTarget(t); setDeleteProducts(false); setDeleteError(""); }}><Trash2 size={13} /></button>
+          </div>
         </div>
         <div className="row-meta task-command">
           <span className="mono cmd">{t.command}{t.args.length ? ` ${t.args.join(" ")}` : ""}</span>
-          {t.cwd && <span>{tr("Working directory", "工作目录")}: {t.cwd}</span>}
         </div>
       </div>
     );
@@ -379,7 +353,7 @@ export default function Tasks({
               <button className="icon-btn" onClick={() => setForm(null)} aria-label={tr("Close task editor", "关闭任务编辑器")}><X size={16} /></button>
             </div>
 
-            <div className="sheet-section">{tr("Basics", "基本信息")}</div>
+            <div className="sheet-section">{tr("Import", "导入")}</div>
             <label>
               {tr("Import from a local project or script (optional)", "从本地项目 / 脚本导入（可选）")}
               <input
@@ -419,26 +393,34 @@ export default function Tasks({
                 <input autoFocus required value={form.nickname} onChange={(e) => setForm({ ...form, nickname: e.target.value })} />
               </label>
             </div>
-            <label>
-              {tr("Command", "命令")}
-              <input required value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })} />
-            </label>
-            <label>
-              {tr("Arguments (one per line)", "参数（每行一个）")}
-              <textarea value={argsText} onChange={(e) => setArgsText(e.target.value)} rows={3} />
-            </label>
-            <label>
-              {tr("Interactive input (optional; one stdin response per line)", "交互输入（可选，喂给脚本 stdin，按提示顺序每行一个）")}
-              <textarea
-                value={form.stdin ?? ""}
-                onChange={(e) => setForm({ ...form, stdin: e.target.value || null })}
-                rows={2}
-                placeholder={tr("For example, enter the URL requested by the script", "如脚本会提示输入网址，这里就填那个网址")}
-              />
-            </label>
+            <button className="advanced-toggle" type="button" onClick={() => setAdvancedOpen(!advancedOpen)} aria-expanded={advancedOpen}>
+              {advancedOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              {tr("Advanced runtime fields", "高级运行参数")}
+            </button>
+            {advancedOpen && <div className="advanced-fields">
+              <label>
+                {tr("Command", "命令")}
+                <input required value={form.command} onChange={(e) => setForm({ ...form, command: e.target.value })} />
+              </label>
+              <label>
+                {tr("Arguments (one per line)", "参数（每行一个）")}
+                <textarea value={argsText} onChange={(e) => setArgsText(e.target.value)} rows={3} />
+              </label>
+              <label>
+                {tr("Interactive input (optional; one stdin response per line)", "交互输入（可选，喂给脚本 stdin，按提示顺序每行一个）")}
+                <textarea
+                  value={form.stdin ?? ""}
+                  onChange={(e) => setForm({ ...form, stdin: e.target.value || null })}
+                  rows={2}
+                  placeholder={tr("For example, enter the URL requested by the script", "如脚本会提示输入网址，这里就填那个网址")}
+                />
+              </label>
+            </div>}
 
             <div className="sheet-section">{tr("Trigger", "触发方式")}</div>
-            {form.kind === "plugin" && <div className="plugin-hint">{tr("Use the task-list switch to control plugins: on starts silently; off terminates the process tree.", "插件由任务列表开关控制：开启即静默启动，关闭即终止进程树。")}</div>}
+            {form.kind === "plugin" && <div className="plugin-hint">{form.lifecycle === "resident"
+              ? tr("Use the task-list switch to control resident plugins: on starts silently; off terminates the process tree.", "常驻插件由任务列表开关控制：开启即静默启动，关闭即终止进程树。")
+              : tr("This plugin is launched by its quick-widget drawer actions or file drop.", "此插件由悬浮窗抽屉中的动作或文件拖放启动。")}</div>}
             <div className="sheet-grid">
               <label>
                 {tr("Trigger", "触发")}
